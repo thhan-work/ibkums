@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.loglist.LogListDao">
+  
+  <sql id="LOGLIST">
+	SELECT
+				T21.group_co_cd as groupCoCd,
+				T21.group_uniq_no  as groupUniqNo,
+				T21.batch_tagt_uniq_no  as batchTagtUniqNo,
+				T21.bzwk_chnl_cd  as bzwkChnlCd,
+				T21.bzwk_idnfr   as bzwkIdnfr,
+				T21.tmpt_uniq_no  as tmptUniqNo,
+				T21.group_nm  as groupNm, 
+				T21.msg_dstic  as msgDstic, 
+				T21.approval_yn  as approvalYn, 
+				T21.prcss_stus_dstic  as prcssStusDstic,
+				T21.requests_number  as requestsNumber, 
+				T21.send_prity_dstic  as sendPrityDstic, 
+				T21.pengag_yms  as pengagYms,
+				T21.expire_schedule_yms  as expireScheduleYms, 
+				T21.send_start_yms  as sendStartYms, 
+				T21.send_expire_yms  as sendExpireYms, 
+				T21.send_progress_number  as sendProgressNumber,
+				T21.schedule_dstic  as scheduleDstic,
+				T21.test_yn  as testYn,
+				T21.inst  as inst,
+				T21.recv_refusal_yn  as recvRefusalYn,
+				T21.reg_yms  as regYms,
+				T21.reg_emp_no  as regEmpNo,
+				T21.send_empid  as sendEmpid,
+				T21.send_brncd  as sendBrncd,
+				T21.sndr_telno  as sndrTelno,
+				T21.sndr_no_address  as sndrNoAddress,
+				T21.recv_no_address  as recvNoAddress,
+				T21.filter_limit_yn  as filterLimitYn,
+				T21.test_no  as testNo,
+				T21.recv_no_var  as recvNoVar,
+				T21In.send_type as sendType,
+				T21In.censor_id as censorId,
+				T21In.budget_nm as budgetNm,
+				T21In.modify_reason as modifyReason,
+				T21In.stop_reason as stopReason,
+				T21In.msg_ctnt as  msgCtnt,
+				T21In.ums_msg_ctnt as umsMsgCtnt
+			FROM  DACOM_DIST.TB_CMC_DRF002M T21
+			LEFT JOIN 	
+				DACOM_DIST.TB_CMC_DRF002D T21In
+			ON
+				T21.group_uniq_no = T21In.group_uniq_no
+			WHERE 
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+			 	<if test='searchStartDt != null and searchStartDt != ""'>
+				<if test='searchEndDt != null and searchEndDt != ""'>
+					   T21.reg_yms  BETWEEN #{searchStartDt} || '000000' AND #{searchEndDt} || '235959' 
+				</if>
+				</if>
+				</if>
+				</if>
+			    <if test="draftName != null and draftName !=''">
+				   AND T21.groupNm LIKE '%' || #{draftName} || '%' 
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(draftStatus)">
+				<if test="draftStatus !='all'">
+				   AND T21.prcss_stus_dstic =#{draftStatus}
+				</if>
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+				<if test="messageType !='all'">
+					<choose>
+						<when test="messageType == 'SMS' or messageType == 'sms'">
+							AND msg_dstic = 'SM'
+						</when>
+						<when test="messageType == 'LMS' or messageType == 'lms'">
+							AND msg_dstic = 'LM'
+						</when>
+						<when test="messageType == 'MMS' or messageType == 'mms'">
+							AND msg_dstic = 'MM'
+						</when>
+					</choose>
+				</if>
+				</if>
+  </sql>
+  
+ 
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(groupUniqNo) AS CNT                             
+    FROM ( 
+          <include refid="LOGLIST"/> 
+     )
+  </select>
+  
+  <select id="findLogList" resultType="com.ibk.msg.web.loglist.LogList">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+          <include refid="LOGLIST"/>                 
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  <select id="findDetail" resultType="com.ibk.msg.web.loglist.LogList">
+    SELECT
+      T21.group_co_cd as groupCoCd,
+			T21.group_uniq_no  as groupUniqNo,
+			T21.batch_tagt_uniq_no  as batchTagtUniqNo,
+			T21.bzwk_chnl_cd  as bzwkChnlCd,
+			T21.bzwk_idnfr   as bzwkIdnfr,
+			T21.tmpt_uniq_no  as tmptUniqNo,
+			T21.group_nm  as groupNm, 
+			T21.msg_dstic  as msgDstic, 
+			T21.approval_yn  as approvalYn, 
+			T21.prcss_stus_dstic  as prcssStusDstic,
+			T21.requests_number  as requestsNumber, 
+			T21.send_prity_dstic  as sendPrityDstic, 
+			T21.pengag_yms  as pengagYms,
+			T21.expire_schedule_yms  as expireScheduleYms, 
+			T21.send_start_yms  as sendStartYms, 
+			T21.send_expire_yms  as sendExpireYms, 
+			T21.send_progress_number  as sendProgressNumber,
+			T21.schedule_dstic  as scheduleDstic,
+			T21.test_yn  as testYn,
+			T21.inst  as inst,
+			T21.recv_refusal_yn  as recvRefusalYn,
+			T21.reg_yms  as regYms,
+			T21.reg_emp_no  as regEmpNo,
+			T21.send_empid  as sendEmpid,
+			T21.send_brncd  as sendBrncd,
+			T21.sndr_telno  as sndrTelno,
+			T21.sndr_no_address  as sndrNoAddress,
+			T21.recv_no_address  as recvNoAddress,
+			T21.filter_limit_yn  as filterLimitYn,
+			T21.test_no  as testNo,
+			T21.recv_no_var  as recvNoVar,
+			T21.censor_id as censorId, 
+			T21.budget_nm as budgetNm,
+			T21.modify_reason as modifyReason,
+			T21.stop_reason as stopReason,
+			T21.msg_ctnt as  msgCtnt,
+			T21.ums_msg_ctnt as umsMsgCtnt
+		FROM  DACOM_DIST.TB_CMC_DRF002M T21
+    WHERE group_uniq_no = #{groupUniqNo}
+ 	</select>
+	<insert id="recordLog">
+		INSERT INTO 
+			DACOM_DIST.TB_CMC_MNG003M
+    	<trim prefix="(" suffix=")" suffixOverrides=",">
+      		EMPL_ID,
+			REG_DATE,
+        	CATEGORY,        
+      		<if test="menu != null">MENU,</if>
+			<if test="content != null">CONTENT</if>
+    	</trim>     
+    	<trim prefix="values (" suffix=")" suffixOverrides=",">
+				#{emplId},
+				SYSDATE,
+				#{category},        
+      		<if test="menu != null">#{menu},</if>
+			<if test="content != null">#{content}</if>         
+   		</trim>
+    </insert>
+  
+  
+	<insert id="msgHistoryLog">
+		INSERT INTO 
+			KIUPSMS.MSG_HISTORY 
+		(            
+			D_DATE,	                         
+			EMPL_ID,	                     
+			SEACH_VALUE	,	                 
+			IP_ADR		                 
+		)         
+		SELECT                           
+			SYSDATE,						 
+			#{emplId},								 
+			#{seachValue},								 
+			#{ipAdr}								 
+		FROM DUAL						 
+    </insert>
+  
+  
+</mapper>

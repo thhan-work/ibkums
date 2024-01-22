@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.notice.NoticeDao">
+  <sql id="NOTICE">
+    SELECT
+    ID
+    ,TITLE
+    ,REG_DT
+    ,SUBSTR(START_DATE,0,4)||'-'||SUBSTR(START_DATE,5,2)||'-'||SUBSTR(START_DATE,7,2) || '~'
+        || SUBSTR(END_DATE,0,4)||'-'||SUBSTR(END_DATE,5,2)||'-'||SUBSTR(END_DATE,7,2) AS DIS_DATE
+    ,WRITER
+    FROM DACOM_DIST.TB_CMC_MNG002M
+    WHERE DIS_YN = 'Y'
+    <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+      <choose>
+        <when test="searchWordType eq 'title' ">
+          AND TITLE like '%'|| #{searchWord} || '%'
+        </when>
+        <when test="searchWordType eq 'writer' ">
+        AND writer like '%'|| #{searchWord} || '%'
+        </when>
+        <otherwise>
+          <!-- TODO: 이부분은 제목과 작성자 인데 현재 작성자 컬럼을 모름 -->
+          AND (TITLE like '%'|| #{searchWord} || '%'
+          OR TITLE like '%'|| #{searchWord} || '%'
+          )
+        </otherwise>
+      </choose>
+    </if>
+    <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+      <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+        AND REG_DT BETWEEN #{searchStartDt}||'000000' AND #{searchEndDt}||'235959'
+      </if>
+    </if>
+    ORDER BY REG_DT DESC
+  </sql>
+  <insert id="add">
+    INSERT INTO DACOM_DIST.TB_CMC_MNG002M
+      (ID, TITLE, CONTENTS, WRITER, START_DATE, END_DATE, REG_DT, DIS_YN)
+    VALUES (
+      #{id},
+      #{title},
+      #{contents},
+      #{writer},
+      #{startDate},
+      #{endDate},
+      to_char(sysdate, 'YYYYMMDDHHMISS'),
+      'Y'
+    )
+  </insert>
+  <insert id="addList">
+
+    <foreach collection="noticeList" item="notice"  open="INSERT ALL" separator="" close="SELECT 1 FROM DUAL">
+      INTO DACOM_DIST.TB_CMC_MNG002M
+        (ID, TITLE, CONTENTS, WRITER, START_DATE, END_DATE, REG_DT, DIS_YN)
+      VALUES
+
+      (
+        #{notice.id},
+        #{notice.title},
+        #{notice.contents},
+        #{notice.writer},
+        #{notice.startDate},
+        #{notice.endDate},
+        to_char(sysdate, 'YYYYMMDDHHMISS'),
+        'Y'
+      )
+    </foreach>
+
+  </insert>
+
+
+
+  <update id="modify">
+    UPDATE DACOM_DIST.TB_CMC_MNG002M SET
+        TITLE = #{title},
+        WRITER = #{writer},
+        START_DATE = #{startDate},
+        END_DATE = #{endDate},
+        MOD_DT = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+        CONTENTS = #{contents}
+    WHERE ID = #{id}
+  </update>
+
+  <update id="remove">
+    UPDATE DACOM_DIST.TB_CMC_MNG002M SET DIS_YN = 'N'
+    WHERE ID = #{noticeId}
+  </update>
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT COUNT(*) FROM (
+    <include refid="NOTICE"/>
+    )
+  </select>
+  <select id="findNotice" resultType="com.ibk.msg.web.notice.Notice">
+    <include refid="PaginationMapper.header"/>
+    <include refid="NOTICE"/>
+    <include refid="PaginationMapper.bottom"/>
+  </select>
+  <select id="findMaxSequnce" resultType="java.lang.Integer">
+    SELECT NVL(MAX(ID), 0)+1 FROM DACOM_DIST.TB_CMC_MNG002M
+  </select>
+  <select id="findDetail" resultType="com.ibk.msg.web.notice.Notice">
+    SELECT
+      id,
+      title,
+      CONTENTS,
+      writer,
+      start_date,
+      end_date,
+      reg_dt,
+      dis_yn
+    FROM DACOM_DIST.TB_CMC_MNG002M
+    WHERE ID = #{id}
+  </select>
+</mapper>

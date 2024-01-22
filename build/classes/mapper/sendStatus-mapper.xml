@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.sendStatus.SendStatusDao">
+    <select id="selectStartDsticList" resultType="hashmap">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.selectStartDsticList */
+		SELECT
+      		  T2.REQUESTS_NUMBER as REQUESTS_NUMBER
+			, SUBSTR(T2.WORK_START_DSTIC, 0, 8) AS START_YMD
+          	, SUBSTR(T2.WORK_START_DSTIC, 9, 12) AS START_HM
+        FROM (
+			  SELECT
+				    SUM(T1.REQUESTS_NUMBER) AS REQUESTS_NUMBER
+				  , T1.WORK_START_DSTIC
+	    	  FROM (
+				    SELECT 
+						  SUBSTR(WORK_START_DSTIC, 0, 12) AS WORK_START_DSTIC
+					    , REQUESTS_NUMBER
+				    FROM 
+					      DACOM_DIST.TB_CMC_DRF004D  
+				    WHERE
+						  GROUP_UNIQ_NO = ${groupUniqNo}
+	    	  ) T1
+	      	  GROUP BY
+	      		    T1.WORK_START_DSTIC
+	      	  ORDER BY
+				    T1.WORK_START_DSTIC ASC
+		) T2
+	</select>
+	
+	<select id="smsSendHistoryTotalCount" resultType="java.lang.Integer">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.smsSendHistoryTotalCount */
+	    SELECT                                                
+	    	 COUNT(1) AS CNT                             
+	    FROM ( 
+	          <include refid="smsSendHistoryList"/> 
+	     )
+	</select>
+	
+	<select id="mmsSendHistoryTotalCount" resultType="java.lang.Integer">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.mmsSendHistoryTotalCount */
+	    SELECT                                                
+	    	 COUNT(1) AS CNT                             
+	    FROM ( 
+	          <include refid="mmsSendHistoryList"/> 
+	     )
+	</select>
+  
+  	<select id="selectSmsSendHistoryList" resultType="com.ibk.msg.web.smssendlist.SendHistory">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.selectSmsSendHistoryList */
+	   	<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+	  		<include refid="PaginationMapper.header"/>
+	  	</if>
+	    <include refid="smsSendHistoryList"/>                 
+	  	<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+	  		<include refid="PaginationMapper.bottom"/>
+	  	</if>
+	</select>
+	
+	<select id="selectMmsSendHistoryList" resultType="com.ibk.msg.web.smssendlist.SendHistory">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.selectMmsSendHistoryList */
+	   	<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+	  		<include refid="PaginationMapper.header"/>
+	  	</if>
+	    <include refid="mmsSendHistoryList"/>                 
+	  	<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+	  		<include refid="PaginationMapper.bottom"/>
+	  	</if>
+	</select>
+  	
+  	<sql id="smsSendHistoryList">
+	    SELECT 
+	    	 t00.TRAN_PHONE AS tranPhone
+	    	 , t00.TRAN_CALLBACK AS tranCallback
+	    	 , t00.TRAN_DATE AS tranDate
+	    	 , t00.TRAN_RSLTDATE AS tranRsltDate
+	    	 , t00.TRAN_NET AS tranNet
+	    	 , t00.TRAN_RSLT AS tranRslt
+	    	 , t21.MSG_DSTIC AS msgDstic
+	    	 , t00.ALT_MSG_YN AS altMsgYn
+		FROM ${historyTableNm} t00
+		INNER JOIN DACOM_DIST.TB_CMC_DRF002M t21
+		ON t00.TRAN_GROUPID = t21.GROUP_UNIQ_NO
+		<where>
+			AND t00.TRAN_GROUPID = ${groupUniqNo}
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+				<if test="messageType !='all'">
+					<choose>
+						<when test="messageType == 'message'">
+							<if test="messageTypeDetail == 'SM'">
+								AND t21.msg_dstic = 'SM'
+							</if>
+							<if test="messageTypeDetail == 'LM'">
+								AND t21.msg_dstic = 'LM'
+							</if>
+							<if test="messageTypeDetail == 'MM'">
+								AND t21.msg_dstic = 'MM'
+							</if>
+							<if test="messageTypeDetail == 'all'">
+								AND t21.msg_dstic IN ('SM', 'LM', 'MM')
+							</if>
+						</when>
+						<when test="messageType == 'kakao'">
+							AND t21.msg_dstic = 'KM'
+						</when>
+						<when test="messageType == 'rcs'">
+							<if test="messageTypeDetail == 'SR'">
+								AND t21.msg_dstic = 'SR'
+							</if>
+							<if test="messageTypeDetail == 'LR'">
+								AND t21.msg_dstic = 'LR'
+							</if>
+							<if test="messageTypeDetail == 'MR'">
+								AND t21.msg_dstic = 'MR'
+							</if>
+							<if test="messageTypeDetail == 'DT'">
+								AND t21.msg_dstic = 'DT'
+							</if>
+							<if test="messageTypeDetail == 'FT'">
+								AND t21.msg_dstic = 'FT'
+							</if>
+							<if test="messageTypeDetail == 'all'">
+								AND t21.msg_dstic IN ('SR', 'LR', 'MR', 'DT', 'FT')
+							</if>
+						</when>
+					</choose>
+				</if>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(result)">
+				<if test="result == 'success'">
+					AND t00.TRAN_RSLT = '0'
+				</if>
+				<if test="result == 'failure'">
+					AND t00.TRAN_RSLT != '0'
+				</if>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(tranPhone)">
+					AND t00.TRAN_PHONE LIKE '%' || #{tranPhone} || '%'
+			</if>
+		</where>
+	</sql>
+	
+	<sql id="mmsSendHistoryList">
+	    SELECT 
+	    	 t00.PHONE AS phone
+	    	 , t00.CALLBACK AS callback
+	    	 , t00.SENTDATE AS sentDate
+	    	 , t00.RSLTDATE AS rsltDate
+	    	 , t00.TELCOINFO AS telcoInfo
+	    	 , t00.RSLT AS rslt
+	    	 , t21.MSG_DSTIC AS msgDstic
+	    	 , t00.ALT_MSG_YN AS altMsgYn
+		FROM ${historyTableNm} t00
+		INNER JOIN DACOM_DIST.TB_CMC_DRF002M t21
+		ON t00.GROUPID = t21.GROUP_UNIQ_NO
+		<where>
+			AND t00.GROUPID = ${groupUniqNo}
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+				<if test="messageType !='all'">
+					<choose>
+						<when test="messageType == 'message'">
+							<if test="messageTypeDetail == 'SM'">
+								AND t21.msg_dstic = 'SM'
+							</if>
+							<if test="messageTypeDetail == 'LM'">
+								AND t21.msg_dstic = 'LM'
+							</if>
+							<if test="messageTypeDetail == 'MM'">
+								AND t21.msg_dstic = 'MM'
+							</if>
+							<if test="messageTypeDetail == 'all'">
+								AND t21.msg_dstic IN ('SM', 'LM', 'MM')
+							</if>
+						</when>
+						<when test="messageType == 'kakao'">
+							AND t21.msg_dstic = 'KM'
+						</when>
+						<when test="messageType == 'rcs'">
+							<if test="messageTypeDetail == 'SR'">
+								AND t21.msg_dstic = 'SR'
+							</if>
+							<if test="messageTypeDetail == 'LR'">
+								AND t21.msg_dstic = 'LR'
+							</if>
+							<if test="messageTypeDetail == 'MR'">
+								AND t21.msg_dstic = 'MR'
+							</if>
+							<if test="messageTypeDetail == 'DT'">
+								AND t21.msg_dstic = 'DT'
+							</if>
+							<if test="messageTypeDetail == 'FT'">
+								AND t21.msg_dstic = 'FT'
+							</if>
+							<if test="messageTypeDetail == 'all'">
+								AND t21.msg_dstic IN ('SR', 'LR', 'MR', 'DT', 'FT')
+							</if>
+						</when>
+					</choose>
+				</if>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(result)">
+				<if test="result == 'success'">
+					AND t00.RSLT = '1000'
+				</if>
+				<if test="result == 'failure'">
+					AND t00.RSLT != '1000'
+				</if>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(tranPhone)">
+					AND t00.PHONE LIKE '%' || #{tranPhone} || '%'
+			</if>
+		</where>
+	</sql>
+	
+	<delete id="deleteSendStatusDRF002M">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.deleteSendStatusDRF002M */
+    	DELETE 
+    	FROM DACOM_DIST.TB_CMC_DRF002M
+    	WHERE GROUP_UNIQ_NO = #{smssendlistId}
+  	</delete>
+	
+	<delete id="deleteSendStatusDRF002D">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.deleteSendStatusDRF002D */
+    	DELETE 
+    	FROM DACOM_DIST.TB_CMC_DRF002D
+    	WHERE GROUP_UNIQ_NO = #{smssendlistId}
+  	</delete>
+	
+	<delete id="deleteSendStatusDRF004M">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.deleteSendStatusDRF004M */
+    	DELETE 
+    	FROM DACOM_DIST.TB_CMC_DRF004M
+    	WHERE GROUP_UNIQ_NO = #{smssendlistId}
+  	</delete>
+	
+	<delete id="deleteSendStatusDRF001M">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.deleteSendStatusDRF001M */
+    	DELETE 
+    	FROM DACOM_DIST.TB_CMC_DRF001M
+    	WHERE GROUP_UNIQ_NO = #{smssendlistId}
+  	</delete>
+	
+	<delete id="deleteSendStatusDRF003M">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.deleteSendStatusDRF003M */
+    	DELETE 
+    	FROM DACOM_DIST.TB_CMC_DRF003M
+    	WHERE BATCH_TAGT_UNIQ_NO = #{smssendlistId}
+  	</delete>
+	
+	<delete id="deleteSendStatusDRF003D">
+		/* com.ibk.msg.web.sendStatus.SendStatusDao.deleteSendStatusDRF003D */
+    	DELETE 
+    	FROM DACOM_DIST.TB_CMC_DRF003D
+    	WHERE BATCH_TAGT_UNIQ_NO = #{smssendlistId}
+  	</delete>
+  	
+  	<update id="updateSendStatus">
+  		/* com.ibk.msg.web.sendStatus.SendStatusDao.updateSendStatus */
+    	UPDATE  
+		  	DACOM_DIST.TB_CMC_DRF002M
+		  SET
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(prcssStusDstic)">
+		  		prcss_stus_dstic = #{prcssStusDstic}
+		  	</if> 
+		   WHERE
+		   	group_uniq_no = #{groupUniqNo}
+  	</update>
+</mapper>

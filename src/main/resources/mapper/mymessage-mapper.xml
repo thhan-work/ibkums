@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.mymessage.MyMessageDao">
+  <sql id="MYMESSAGE">
+  		SELECT MSGKEY AS TRAN_PR,  
+  				DECODE(NVL(TYPE,0), 3, 'KAKAO','MMS') AS MESSAGETYPE,
+                PHONE AS TRAN_PHONE,                             
+                MSG AS TRAN_MSG,                                 
+                REQDATE AS TRAN_DATE,                            
+                NVL(RSLT, '') as TRAN_RSLT,
+                CALLBACK AS TRAN_CALLBACK,
+                SUBJECT AS TRAN_SUBJECT,
+                ETC5 AS TRAN_ETC5 
+        FROM 
+        	DACOM_DIST.DIST_MMS_LOG_${regDt}                            
+        WHERE 
+        	ID = #{boCode}                               
+        	AND ETC2 IS NULL
+        	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+            <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+            AND REQDATE BETWEEN to_date(#{searchStartDt} || '000000', 'yyyymmddhh24miss') AND to_date(#{searchEndDt} || '235959', 'yyyymmddhh24miss')
+            </if> 
+            </if> 
+        	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+            <if test="searchPhoneNumber != null or searchNumber != ''">
+ 			AND PHONE = #{searchPhoneNumber}
+        	</if>
+        	</if>
+			   <choose>
+			        <when test="searchSendStatus eq 'success' ">
+			        	AND RSLT = '1000'
+			        </when>
+			        <when test="searchSendStatus eq 'wait' ">
+			        	AND (RSLT is null OR RSLT = '')
+			        </when>
+			        <when test="searchSendStatus eq 'fail' ">
+			        	AND RSLT NOT IN('1000','X')
+			        </when>
+			        <when test="searchSendStatus eq 'refuse' ">
+			        	AND RSLT = 'X'
+			        </when>
+		       </choose>
+        UNION  ALL                                                     
+        SELECT TRAN_PR,                                       
+			   DECODE(NVL(TRAN_TYPE,0), 3, 'KAKAO','SMS') AS MESSAGETYPE,
+			   TRAN_PHONE,                                                      
+			   TRAN_MSG,                                                               
+			   TRAN_DATE,                                                            
+			   NVL(TRAN_RSLT, '') AS TRAN_RSLT,
+			   TRAN_CALLBACK,
+			   NULL,
+			   TRAN_ETC5  
+         FROM                                                 
+            DACOM_DIST.DIST_LOG_${regDt}                           
+         WHERE                                                
+            TRAN_ID = #{boCode}                      
+         	AND TRAN_ETC2 IS NULL                                
+ 			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+            <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+            	AND TRAN_DATE BETWEEN to_date(#{searchStartDt} || '000000', 'yyyymmddhh24miss') AND to_date(#{searchEndDt} || '235959', 'yyyymmddhh24miss')
+            </if> 
+            </if> 
+        	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+            <if test="searchPhoneNumber != null or searchNumber != ''">
+ 				AND TRAN_PHONE = #{searchPhoneNumber}
+        	</if>
+        	</if>
+			   <choose>
+			        <when test="searchSendStatus eq 'success' ">
+			        	AND TRAN_RSLT = '0'
+			        </when>
+			        <when test="searchSendStatus eq 'wait' ">
+			        	AND (TRAN_RSLT is null OR TRAN_RSLT = '')
+			        </when>
+			        <when test="searchSendStatus eq 'fail' ">
+			        	AND TRAN_RSLT NOT IN('0','X')
+			        </when>
+			        <when test="searchSendStatus eq 'refuse' ">
+			        	AND TRAN_RSLT = 'X'
+			        </when>
+		       </choose>
+  </sql>
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(TRAN_PR) AS CNT                             
+    FROM ( 
+          <include refid="MYMESSAGE"/> 
+     )
+  </select>
+  
+  <select id="findMyMessage" resultType="com.ibk.msg.web.mymessage.MyMessage">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+     SELECT                                                                      
+	     TRAN_PR as id, 
+	     MESSAGETYPE as messageType,                                                               
+	     TRAN_PHONE as phoneNumber,                                                      
+	     TRAN_MSG as msg,                                                               
+	     TRAN_DATE as regDt,                                                            
+	     TRAN_RSLT as sendRslt,
+	     TRAN_CALLBACK as callBack,
+	     TRAN_SUBJECT as subject,
+	     TRAN_ETC5 as etc5
+ 	FROM (                                                                      
+          <include refid="MYMESSAGE"/>                 
+         )                                                       
+        ORDER BY TRAN_DATE DESC  
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  <update id="remove">
+  UPDATE  
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(regDt)">
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+  	<if test="messageType == 'SMS' ">
+  	DACOM_DIST.DIST_LOG_${regDt}
+	SET 
+	 	TRAN_ETC2 = 'N'
+	WHERE 
+	  	TRAN_PR  = #{id}	
+  	</if>
+  	<if test="messageType == 'MMS' ">
+  	DACOM_DIST.DIST_MMS_LOG_${regDt}
+  	SET 
+	  	ETC2 = 'N'
+	  WHERE 
+	  	MSGKEY  = #{id} 
+  	</if>
+  	</if>
+  	</if>
+  </update>
+  
+  
+  	<!-- SMS 배치 발송  -->
+    <insert id="sendSMS">
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_SMS
+		(
+			TRAN_PR, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK, TRAN_STATUS
+			, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_TYPE
+			, TRAN_ETC1, TRAN_ETC2, TRAN_ETC3, TRAN_ETC4, TRAN_ETC5
+		)
+		SELECT 
+				KIUPSMS.EM_TRAN_PR.NEXTVAL AS TRAN_PR, A.*
+		FROM
+		(
+		<foreach collection="mymsgResendList" item="msgSendData" separator="UNION ALL">
+			SELECT 
+				 #{tranId} 								AS TRAN_ID
+				, #{msgSendData.rcvPhone}		AS TRAN_PHONE
+				, #{msgSendData.tranCallback}	AS TRAN_CALLBACK
+				, #{msgSendData.tranStatus}		AS TRAN_STATUS	 	<!-- TRAN_STATUS -->
+				, #{msgSendData.tranRslt}			AS TRAN_RSLT
+				, TO_DATE(#{msgSendData.tranDate}, 'YYYYMMDDHH24MISS') 		AS TRAN_DATE
+				, #{msgSendData.tranMsg}		AS TRAN_MSG
+				, 0			<!-- TRAN_TYPE -->		AS TRAN_TYPE
+				, NULL										AS TRAN_ETC1
+				, NULL										AS TRAN_ETC2
+				, NULL										AS TRAN_ETC3
+				, NULL										AS TRAN_ETC4
+				, #{msgSendData.rcvName}		AS TRAN_ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+
+<!-- SMS 배치 로그  -->
+    <insert id="logSMS" >
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_LOG_${logDate}
+		(
+			TRAN_PR, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK, TRAN_STATUS
+			, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_TYPE
+			, TRAN_ETC1, TRAN_ETC2, TRAN_ETC3, TRAN_ETC4, TRAN_ETC5
+		)
+		SELECT 
+			KIUPSMS.EM_TRAN_PR.NEXTVAL AS TRAN_PR, A.*
+		FROM
+		(
+		<foreach collection="mymsgLogList" item="msgLogData" separator="UNION ALL">
+			SELECT 
+				 #{tranId} 								AS TRAN_ID
+				, #{msgLogData.rcvPhone}			AS TRAN_PHONE
+				, #{msgLogData.tranCallback}		AS TRAN_CALLBACK
+				, #{msgLogData.tranStatus}		AS TRAN_STATUS	 	<!-- TRAN_STATUS -->
+				, #{msgLogData.tranRslt}			AS TRAN_RSLT
+				, TO_DATE(#{msgLogData.tranDate}, 'YYYYMMDDHH24MISS') 		AS TRAN_DATE
+				, #{msgLogData.tranMsg}			AS TRAN_MSG
+				, 0			<!-- TRAN_TYPE -->		AS TRAN_TYPE
+				, NULL										AS TRAN_ETC1
+				, NULL										AS TRAN_ETC2
+				, NULL										AS TRAN_ETC3
+				, NULL										AS TRAN_ETC4
+				, #{msgLogData.rcvName}		AS TRAN_ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+
+
+<!-- MMS 배치 발송  -->
+    <insert id="sendMMS" >
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_MMS_MSG
+		(
+			MSGKEY, SUBJECT, PHONE, CALLBACK, STATUS
+			,RSLT , REQDATE, MSG, FILE_CNT, FILE_CNT_REAL
+			, FILE_PATH1, FILE_PATH1_SIZ, EXPIRETIME
+			, ID, COMPKEY , ETC5
+		)
+		SELECT 
+				KIUPSMS.EM_TRAN_PR.NEXTVAL AS MSGKEY, A.*
+		FROM
+		(
+		<foreach collection="mymsgResendList" item="msgSendData" separator="UNION ALL">
+			SELECT
+				#{msgSendData.rcvSubject}			AS SUBJECT
+				, #{msgSendData.rcvPhone}			AS PHONE
+				, #{msgSendData.tranCallback}		AS CALLBACK
+				, #{msgSendData.tranStatus}			AS STATUS	 	<!-- STATUS -->
+				, #{msgSendData.tranRslt}				AS RSLT
+				, TO_DATE(#{msgSendData.tranDate}, 'YYYYMMDDHH24MISS')  AS REQDATE
+				, #{msgSendData.rcvMsg}				AS MSG
+				, #{msgSendData.fileCt}					AS FILE_CNT
+				, #{msgSendData.fileCt}					AS FILE_CNT_REAL		<!-- FILE_CNT_REAL -->
+				, #{msgSendData.fileName}			AS FILE_PATH1
+				, #{msgSendData.fileSize}				AS FILE_PATH1_SIZ
+				, '43200'										AS EXPIRETIME
+				, #{tranId}									AS ID
+				, #{msgSendData.desCode}			AS COMPKEY
+				, #{msgSendData.rcvName}			AS ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+  
+<!-- MMS 배치 로그  -->
+    <insert id="logMMS" >
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_MMS_LOG_${logDate}
+		(
+			MSGKEY, SUBJECT, PHONE, CALLBACK, STATUS
+			,RSLT , REQDATE, MSG, FILE_CNT, FILE_CNT_REAL
+			, FILE_PATH1, FILE_PATH1_SIZ, EXPIRETIME
+			, ID, COMPKEY , ETC5
+		)
+		SELECT 
+				KIUPSMS.EM_TRAN_PR.NEXTVAL AS MSGKEY, A.*
+		FROM
+		(
+		<foreach collection="mymsgLogList" item="msgLogData" separator="UNION ALL">
+			SELECT
+				#{msgLogData.rcvSubject}				AS SUBJECT
+				, #{msgLogData.rcvPhone}				AS PHONE
+				, #{msgLogData.tranCallback}			AS CALLBACK
+				, #{msgLogData.tranStatus}			AS STATUS	 	<!-- STATUS -->
+				, #{msgLogData.tranRslt}				AS RSLT
+				, TO_DATE(#{msgLogData.tranDate}, 'YYYYMMDDHH24MISS')  AS REQDATE
+				, #{msgLogData.rcvMsg}				AS MSG
+				, #{msgLogData.fileCt}					AS FILE_CNT
+				, #{msgLogData.fileCt}					AS FILE_CNT_REAL		<!-- FILE_CNT_REAL -->
+				, #{msgLogData.fileName}				AS FILE_PATH1
+				, #{msgLogData.fileSize}				AS FILE_PATH1_SIZ
+				, '43200'										AS EXPIRETIME
+				, #{tranId}									AS ID
+				, #{msgLogData.desCode}				AS COMPKEY
+				, #{msgLogData.rcvName}			AS ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+  
+  
+  <select id="getCutOption" resultType="java.lang.String">
+  		SELECT CUT_OPTION INTO OPT FROM CUT_LIST WHERE PHONE = #{value}
+  </select>
+  
+  <select id="getOpt" resultType="java.lang.String">
+  		SELECT OPT INTO OPT2 FROM MESSAGE_UNIT WHERE UNIT_CODE = #{value}
+  </select>
+  
+</mapper>

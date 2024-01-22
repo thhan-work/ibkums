@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.message.MessageDao">
+
+	
+<!-- SMS 배치 발송  -->
+    <insert id="sendSMS">
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_SMS
+		(
+			TRAN_PR, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK, TRAN_STATUS
+			, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_TYPE
+			, TRAN_ETC1, TRAN_ETC2, TRAN_ETC3, TRAN_ETC4, TRAN_ETC5, TRAN_POLLINGKEY
+		)
+		SELECT 
+				KIUPSMS.EM_TRAN_PR.NEXTVAL AS TRAN_PR, A.*
+		FROM
+		(
+		<foreach collection="msgSendList" item="msgSendData" separator="UNION ALL">
+			SELECT 
+				 #{tranId} 								AS TRAN_ID
+				, #{msgSendData.rcvPhone}		AS TRAN_PHONE
+				, #{msgSendData.tranCallback}	AS TRAN_CALLBACK
+				, (SELECT CASE WHEN (SELECT CUT_OPTION FROM (SELECT * FROM KIUPSMS.CUT_LIST ORDER BY CUT_DATE DESC) WHERE PHONE = #{msgSendData.rcvPhone} AND 2 > ROWNUM ) = '1111' THEN '3' ELSE #{msgSendData.tranStatus} END FROM DUAL)	AS TRAN_STATUS	 	<!-- TRAN_STATUS -->
+				, (SELECT CASE WHEN (SELECT CUT_OPTION FROM (SELECT * FROM KIUPSMS.CUT_LIST ORDER BY CUT_DATE DESC) WHERE PHONE = #{msgSendData.rcvPhone} AND 2 > ROWNUM ) = '1111' THEN 'X' ELSE #{msgSendData.tranRslt} END FROM DUAL) AS TRAN_RSLT
+				, TO_DATE(#{msgSendData.tranDate}, 'YYYYMMDDHH24MISS') 		AS TRAN_DATE
+				, #{msgSendData.tranMsg}		AS TRAN_MSG
+				, 0			<!-- TRAN_TYPE -->		AS TRAN_TYPE
+				, NULL									AS TRAN_ETC1
+				, NULL									AS TRAN_ETC2
+				, NULL									AS TRAN_ETC3
+				, NULL									AS TRAN_ETC4
+				, #{msgSendData.rcvName}		AS TRAN_ETC5
+				, #{pollingkey}						AS TRAN_POLLINGKEY
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+
+  <insert id="sendSMSWithoutUnsubscribe">
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_SMS
+		(
+			TRAN_PR, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK, TRAN_STATUS
+			, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_TYPE
+			, TRAN_ETC1, TRAN_ETC2, TRAN_ETC3, TRAN_ETC4, TRAN_ETC5
+		)
+		SELECT 
+				KIUPSMS.EM_TRAN_PR.NEXTVAL AS TRAN_PR, A.*
+		FROM
+		(
+		<foreach collection="msgSendList" item="msgSendData" separator="UNION ALL">
+			SELECT 
+				 #{tranId} 								AS TRAN_ID
+				, #{msgSendData.rcvPhone}		AS TRAN_PHONE
+				, #{msgSendData.tranCallback}	AS TRAN_CALLBACK
+				, #{msgSendData.tranStatus}		AS TRAN_STATUS	 	<!-- TRAN_STATUS -->
+				, #{msgSendData.tranRslt}		AS TRAN_RSLT
+				, TO_DATE(#{msgSendData.tranDate}, 'YYYYMMDDHH24MISS') 		AS TRAN_DATE
+				, #{msgSendData.tranMsg}		AS TRAN_MSG
+				, 0			<!-- TRAN_TYPE -->		AS TRAN_TYPE
+				, NULL									AS TRAN_ETC1
+				, NULL									AS TRAN_ETC2
+				, NULL									AS TRAN_ETC3
+				, NULL									AS TRAN_ETC4
+				, #{msgSendData.rcvName}		AS TRAN_ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+
+
+<!-- SMS 배치 로그  -->
+    <insert id="logSMS" >
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_LOG_${logDate}
+		(
+			TRAN_PR, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK, TRAN_STATUS
+			, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_TYPE
+			, TRAN_ETC1, TRAN_ETC2, TRAN_ETC3, TRAN_ETC4, TRAN_ETC5
+		)
+		SELECT 
+				KIUPSMS.EM_TRAN_PR.NEXTVAL AS TRAN_PR, A.*
+		FROM
+		(
+		<foreach collection="msgLogList" item="msgLogData" separator="UNION ALL">
+			SELECT 
+				 #{tranId} 								AS TRAN_ID
+				, #{msgLogData.rcvPhone}			AS TRAN_PHONE
+				, #{msgLogData.tranCallback}		AS TRAN_CALLBACK
+				, #{msgLogData.tranStatus}		AS TRAN_STATUS	 	<!-- TRAN_STATUS -->
+				, #{msgLogData.tranRslt}			AS TRAN_RSLT
+				, TO_DATE(#{msgLogData.tranDate}, 'YYYYMMDDHH24MISS') 		AS TRAN_DATE
+				, #{msgLogData.tranMsg}			AS TRAN_MSG
+				, 0			<!-- TRAN_TYPE -->		AS TRAN_TYPE
+				, NULL									AS TRAN_ETC1
+				, NULL									AS TRAN_ETC2
+				, NULL									AS TRAN_ETC3
+				, NULL									AS TRAN_ETC4
+				,#{msgLogData.rcvName}			AS TRAN_ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+
+
+<!-- MMS 배치 발송  -->
+    <insert id="sendMMS" >
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_MMS_MSG
+		(
+			MSGKEY, SUBJECT, PHONE, CALLBACK, STATUS
+			,RSLT , REQDATE, MSG, FILE_CNT, FILE_CNT_REAL
+			, FILE_PATH1, FILE_PATH1_SIZ, EXPIRETIME
+			, ID, COMPKEY, POLLINGKEY, ETC5
+		)
+		SELECT 
+				KIUPSMS.MMS_MSG_SEQ.NEXTVAL AS MSGKEY, A.*
+		FROM
+		(
+		<foreach collection="msgSendList" item="msgSendData" separator="UNION ALL">
+			SELECT
+				#{msgSendData.rcvSubject}			AS SUBJECT
+				, #{msgSendData.rcvPhone}			AS PHONE
+				, #{msgSendData.tranCallback}		AS CALLBACK
+				, (SELECT CASE WHEN (SELECT CUT_OPTION FROM (SELECT * FROM KIUPSMS.CUT_LIST ORDER BY CUT_DATE DESC) WHERE PHONE = #{msgSendData.rcvPhone} AND 2 > ROWNUM) = '1111' THEN '3' ELSE #{msgSendData.tranStatus} END FROM DUAL)	AS STATUS	 	<!-- STATUS -->
+				, (SELECT CASE WHEN (SELECT CUT_OPTION FROM (SELECT * FROM KIUPSMS.CUT_LIST ORDER BY CUT_DATE DESC) WHERE PHONE = #{msgSendData.rcvPhone} AND 2 > ROWNUM) = '1111' THEN 'X' ELSE #{msgSendData.tranRslt} END FROM DUAL) AS RSLT
+				, TO_DATE(#{msgSendData.tranDate}, 'YYYYMMDDHH24MISS')  AS REQDATE
+				, #{msgSendData.rcvMsg}				AS MSG
+				, #{msgSendData.fileCt}					AS FILE_CNT
+				, #{msgSendData.fileCt}					AS FILE_CNT_REAL		<!-- FILE_CNT_REAL -->
+				, #{msgSendData.fileName}			AS FILE_PATH1
+				, #{msgSendData.fileSize}				AS FILE_PATH1_SIZ
+				, '43200'										AS EXPIRETIME
+				, #{tranId}									AS ID
+				, #{msgSendData.desCode}			AS COMPKEY
+				, #{pollingkey}							AS POLLINGKEY
+				, #{msgSendData.rcvName}			AS ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+  
+  
+  <insert id="sendMMSWithoutUnsubscribe" >
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_MMS_MSG
+		(
+			MSGKEY, SUBJECT, PHONE, CALLBACK, STATUS
+			,RSLT , REQDATE, MSG, FILE_CNT, FILE_CNT_REAL
+			, FILE_PATH1, FILE_PATH1_SIZ, EXPIRETIME
+			, ID, COMPKEY, ETC5 
+		)
+		SELECT 
+				KIUPSMS.MMS_MSG_SEQ.NEXTVAL AS MSGKEY, A.*
+		FROM
+		(
+		<foreach collection="msgSendList" item="msgSendData" separator="UNION ALL">
+			SELECT
+				#{msgSendData.rcvSubject}			AS SUBJECT
+				, #{msgSendData.rcvPhone}			AS PHONE
+				, #{msgSendData.tranCallback}		AS CALLBACK
+				, #{msgSendData.tranStatus}			AS STATUS	 	<!-- STATUS -->
+				, #{msgSendData.tranRslt}			AS RSLT
+				, TO_DATE(#{msgSendData.tranDate}, 'YYYYMMDDHH24MISS')  AS REQDATE
+				, #{msgSendData.rcvMsg}				AS MSG
+				, #{msgSendData.fileCt}					AS FILE_CNT
+				, #{msgSendData.fileCt}					AS FILE_CNT_REAL		<!-- FILE_CNT_REAL -->
+				, #{msgSendData.fileName}			AS FILE_PATH1
+				, #{msgSendData.fileSize}				AS FILE_PATH1_SIZ
+				, '43200'										AS EXPIRETIME
+				, #{tranId}									AS ID
+				, #{msgSendData.desCode}			AS COMPKEY
+				, #{msgSendData.rcvName}			AS ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+  
+  
+<!-- MMS 배치 로그  -->
+    <insert id="logMMS" >
+	    INSERT INTO 
+	    	DACOM_DIST.DIST_MMS_LOG_${logDate}
+		(
+			MSGKEY, SUBJECT, PHONE, CALLBACK, STATUS
+			,RSLT , REQDATE, MSG, FILE_CNT, FILE_CNT_REAL
+			, FILE_PATH1, FILE_PATH1_SIZ, EXPIRETIME
+			, ID, COMPKEY, ETC5
+		)
+		SELECT 
+				KIUPSMS.MMS_MSG_SEQ.NEXTVAL AS MSGKEY, A.*
+		FROM
+		(
+		<foreach collection="msgLogList" item="msgLogData" separator="UNION ALL">
+			SELECT
+				#{msgLogData.rcvSubject}				AS SUBJECT
+				, #{msgLogData.rcvPhone}				AS PHONE
+				, #{msgLogData.tranCallback}			AS CALLBACK
+				, #{msgLogData.tranStatus}			AS STATUS	 	<!-- STATUS -->
+				, #{msgLogData.tranRslt}				AS RSLT
+				, TO_DATE(#{msgLogData.tranDate}, 'YYYYMMDDHH24MISS')  AS REQDATE
+				, #{msgLogData.rcvMsg}				AS MSG
+				, #{msgLogData.fileCt}					AS FILE_CNT
+				, #{msgLogData.fileCt}					AS FILE_CNT_REAL		<!-- FILE_CNT_REAL -->
+				, #{msgLogData.fileName}				AS FILE_PATH1
+				, #{msgLogData.fileSize}				AS FILE_PATH1_SIZ
+				, '43200'										AS EXPIRETIME
+				, #{tranId}									AS ID
+				, #{msgLogData.desCode}				AS COMPKEY
+				, #{msgLogData.rcvName}				AS ETC5
+			FROM
+				DUAL
+ 		</foreach>
+ 		) A
+  </insert>
+  
+  
+  <select id="getCutOption" resultType="java.lang.String">
+  		SELECT CUT_OPTION AS OPT FROM (SELECT * FROM KIUPSMS.CUT_LIST ORDER BY CUT_DATE DESC) WHERE PHONE = #{value}  AND 2 > ROWNUM
+  </select>
+  
+  <select id="getOpt" resultType="java.lang.String">
+  		SELECT OPT AS OPT2 FROM KIUPSMS.MESSAGE_UNIT WHERE UNIT_CODE = #{value}
+  </select>
+  
+  <select id="getSeq" resultType="java.lang.String">
+  		SELECT KIUPSMS.EM_TRAN_PR.NEXTVAL FROM DUAL
+  </select>
+  
+  <select id="getSMSUnsubscribeCount" resultType="java.lang.Integer">
+		SELECT /*+INDEX(DIST_SMS DIST_SMS_IDX8)*/ 
+			COUNT(*)
+	 	FROM 
+	 		DACOM_DIST.DIST_SMS
+		WHERE
+			TRAN_STATUS='3'
+			AND TRAN_POLLINGKEY = #{pollingkey}
+			AND TRAN_RSLT = 'X'
+  </select>
+  
+  <select id="getMMSUnsubscribeCount" resultType="java.lang.Integer">
+		SELECT /*+INDEX(DIST_MMS_MSG DIST_MMS_MSG_IDX_04)*/ 
+			COUNT(*)
+		FROM 
+			DACOM_DIST.DIST_MMS_MSG
+		WHERE
+			STATUS='3'
+			AND POLLINGKEY = #{pollingkey}
+			AND RSLT = 'X'
+  </select>
+  
+  
+</mapper>

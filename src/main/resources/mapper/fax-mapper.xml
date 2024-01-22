@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.fax.FaxDao">
+  
+  
+ <sql id="FAX">
+		SELECT 
+			KEY_ID                                         
+	 	    ,USER_ID                                        
+	 	    ,FAXNO                                          
+	 	    ,SEND_TIME                                      
+	 	    ,RESULT                                         
+	 	    ,ERROR_CODE                                     
+	 	    ,TRAN_ETC1                                      
+		FROM 
+		(
+			SELECT 
+				KEY_ID                                 
+	 	        ,USER_ID                                
+	 	        ,FAXNO                                  
+	 	        ,SEND_TIME                              
+	 	        ,RESULT                                 
+	 	        ,ERROR_CODE                             
+	 	        ,TRAN_ETC1                              
+			FROM KIUPSMS.SEND_RESULT_BLOCK                      
+	 	    WHERE 
+		 	    <if test="searchWordType == 'sendReq'">
+		 	    	FAXNO IN (SELECT TO_CHAR('FAX/'||SUBSTR(TO_INFO,1,INSTR(TO_INFO,'(',1)-1)) FROM KIUPSMS.SEND_REQ WHERE FROM_INFO = #{searchWord} AND SEND_TIME BETWEEN #{searchStartDt}||'000000' AND #{searchEndDt}||'235959')
+				</if>
+		 	    <if test="searchWordType == 'faxNo'">
+		 	    	FAXNO = #{searchWord}
+				</if>
+	 		 	AND SEND_TIME BETWEEN #{searchStartDt}||'000000' AND #{searchEndDt}||'235959'
+			UNION ALL                                     
+	        	SELECT 
+	        		KEY_ID                                 
+	 	            ,USER_ID                                
+	 	            ,FAXNO                                  
+	 	            ,SEND_TIME                              
+	 	            ,RESULT                                 
+	 	            ,ERROR_CODE                             
+	 	            ,TRAN_ETC1                              
+				FROM 
+					KIUPSMS.SEND_RESULT                            
+                	WHERE
+			 	    <if test="searchWordType == 'sendReq'">
+			 	    	FAXNO IN (SELECT TO_CHAR('FAX/'||SUBSTR(TO_INFO,1,INSTR(TO_INFO,'(',1)-1)) FROM KIUPSMS.SEND_REQ WHERE FROM_INFO = #{searchWord} AND SEND_TIME BETWEEN #{searchStartDt}||'000000' AND #{searchEndDt}||'235959')
+					</if>
+			 	    <if test="searchWordType == 'faxNo'">
+			 	    	FAXNO = 'FAX/' || #{searchWord}
+					</if>
+		 		 	AND SEND_TIME BETWEEN #{searchStartDt}||'000000' AND #{searchEndDt}||'235959'
+		 			
+		)
+ </sql>
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(*) AS CNT                              
+    FROM ( 
+          <include refid="FAX"/> 
+     )
+  </select>
+  
+  
+  <select id="findAllMessage" resultType="com.ibk.msg.web.fax.Fax">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+          <include refid="FAX"/>                 
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+    
+</mapper>

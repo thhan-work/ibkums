@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN"
+  "http://tiles.apache.org/dtds/tiles-config_3_0.dtd">
+<tiles-definitions>
+
+  <definition name="login-layout-tiles" template="/WEB-INF/layout/layout.jsp">
+    <put-attribute name="style" value="/WEB-INF/layout/style_v1.jsp"/>
+    <put-attribute name="header" value="/WEB-INF/layout/header_login.jsp"/>
+    <put-attribute name="side-menu" value=""/>
+    <put-attribute name="content" value=""/>
+  </definition>
+  
+   <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="allmessage/login" extends="login-layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/allmessage/login.jsp"/>
+  </definition>
+  
+  <definition name="common/motp_login" extends="login-layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/common/motp_login.jsp"/>
+  </definition>
+  
+  <definition name="common/force_passwd_change" extends="login-layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/common/force_passwd_change.jsp"/>
+  </definition>
+  
+  <definition name="common/login" extends="login-layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/common/login.jsp"/>
+  </definition>
+
+  <definition name="allmessage-layout-tiles" template="/WEB-INF/layout/layout_allmessage.jsp">
+    <put-attribute name="style" value="/WEB-INF/layout/style_v1.jsp"/>
+    <put-attribute name="header" value="/WEB-INF/layout/header_allmessage.jsp"/>
+    <put-attribute name="side-menu" value=""/>
+    <put-attribute name="content" value=""/>
+  </definition>
+  
+  <definition name="template-view-tiles" template="/WEB-INF/layout/single_layout.jsp">    
+    <put-attribute name="content" value=""/>
+  </definition>
+  
+  <!-- <definition name="template-view-tiles" template="/WEB-INF/layout/layout.jsp">
+    <put-attribute name="header" value=""/>
+    <put-attribute name="side-menu" value=""/>
+    <put-attribute name="content" value=""/>
+  </definition> -->
+  
+   <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="allmessage/*" extends="allmessage-layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/allmessage/{1}.jsp"/>
+  </definition>
+  
+  <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="fax/*" extends="allmessage-layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/fax/{1}.jsp"/>
+  </definition>
+  
+  <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="allmessage/crmview" extends="template-view-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/allmessage/crmview.jsp"/>
+  </definition>
+  
+  <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="template/template_view" extends="template-view-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/template/template_view.jsp"/>
+  </definition>
+  
+  <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="email/*" extends="allmessage-layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/email/{1}.jsp"/>
+  </definition>
+
+  <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="campaign/*/*" extends="layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="style" value="/WEB-INF/layout/style_v2.jsp"/>
+    <put-attribute name="content" value="/WEB-INF/view/jsp/campaign/{1}/{2}.jsp"/>
+  </definition>
+  
+  <!-- campaign/dialog View -->
+  <definition name="campaign/*/*/*" extends="layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="style" value="/WEB-INF/layout/style_v2.jsp"/>
+    <put-attribute name="content" value="/WEB-INF/view/jsp/campaign/{1}/{2}/{3}.jsp"/>
+  </definition>
+
+  <definition name="layout-tiles" template="/WEB-INF/layout/layout.jsp">
+    <put-attribute name="style" value="/WEB-INF/layout/style_v1.jsp"/>
+    <put-attribute name="header" value="/WEB-INF/layout/header.jsp"/>
+    <put-attribute name="side-menu" value="/WEB-INF/layout/side-menu.jsp"/>
+    <put-attribute name="content" value=""/>
+  </definition>
+
+  <!-- Controller 에서 넘겨주는 View 구조 ex) "jsp/sample" -->
+  <definition name="*/*" extends="layout-tiles">
+    <!-- view/jsp/*.jsp  -->
+    <!-- view/jsp/*.jsp  -->
+    <put-attribute name="content" value="/WEB-INF/view/jsp/{1}/{2}.jsp"/>
+  </definition>
+  
+</tiles-definitions>

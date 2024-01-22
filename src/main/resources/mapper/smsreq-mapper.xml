@@ -1,0 +1,1437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.smsreq.SmsReqDao">
+
+	
+<!-- 해당 일자 시간별 전체 발송 건수 조회  -->
+	<select id="getDateTotalCnt" resultType="hashmap">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.getDateTotalCnt */
+		SELECT 
+			<foreach collection="timeList" item="time" separator="," index="index">
+				(
+                    SELECT 
+                        NVL(SUM(T30.SECTION_NUMBER),'0') 
+                    FROM 
+                        DACOM_DIST.TB_CMC_DRF004M T30
+                    LEFT JOIN
+                        DACOM_DIST.TB_CMC_DRF002M T21
+                    ON
+                        T30.GROUP_UNIQ_NO = T21.GROUP_UNIQ_NO
+                    WHERE 
+                        T30.SCHEDULE_DSTIC = 'W'
+                        AND T30.PENGAG_YMS = #{date}||#{time}||'00'
+                        <if test="selectType != 'save'">
+                        	AND T21.PRCSS_STUS_DSTIC IN ('A', 'Y', 'H', 'F', 'S', 'D')
+                        </if>
+                        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(groupUniqNo)">
+                            AND T21.GROUP_UNIQ_NO = ${groupUniqNo}
+                        </if>
+				) AS "TOTAL_TIME_${time}"
+			</foreach>
+			, (
+		      	SELECT TOT_NUMBER 
+		        FROM DACOM_DIST.TB_CMC_DRF004M T30
+		        WHERE group_uniq_no = ${groupUniqNo}
+		        GROUP BY TOT_NUMBER
+		      ) AS "TOTAL_COUNT"
+		FROM
+			DUAL
+	</select>
+
+<!-- 해당 기안에 대한 발송건수 추가 일자 조회  -->
+	<select id="getSaveDateList" resultType="java.lang.String">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.getSaveDateList */
+		SELECT
+		    PENGAG_YMS
+		FROM
+		(
+		    SELECT
+		        SUBSTR(PENGAG_YMS,0,8) AS PENGAG_YMS
+		    FROM
+		        DACOM_DIST.TB_CMC_DRF004M 
+		    WHERE
+		        SCHEDULE_DSTIC = 'W'
+		        AND GROUP_UNIQ_NO = ${groupUniqNo}
+		)
+		GROUP BY 
+			PENGAG_YMS
+		ORDER BY 
+			PENGAG_YMS
+	</select>
+	
+<!-- 해당 기안에 대한 발송건수 추가 일자 조회  -->
+	<select id="getSaveDateList2" resultType="java.lang.String">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.getSaveDateList2 */
+	    SELECT
+	        PENGAG_YMS
+	    FROM
+	        DACOM_DIST.TB_CMC_DRF004M 
+	    WHERE
+	        SCHEDULE_DSTIC = 'W'
+	        AND GROUP_UNIQ_NO = ${groupUniqNo}
+		GROUP BY 
+			PENGAG_YMS
+		ORDER BY 
+			PENGAG_YMS
+	</select>
+
+<!-- 결제선 승인자 검색  -->
+    <sql id="EMPLOYEE">
+		SELECT
+	        EM.EMPL_NAME
+	        ,EM.EMPL_POSITION
+	        ,EM.BO_CODE
+	        ,EM.EMPL_ID
+	        ,EM.EMPL_CLASS
+	        ,EM.EMPL_HP_NO
+	        ,NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+	        ,NVL(PA.PART_NAME,'-') AS PART_NAME
+        FROM 
+        	KIUPSMS.EMPLOYEE_INFO EM
+        LEFT OUTER JOIN 
+        	KIUPSMS.EMPLOYEE_POSITION_INFO PO
+        ON 
+        	EM.EMPL_POSITION = PO.POSITION_CODE
+    	LEFT OUTER JOIN 
+    		KIUPSMS.PART_INFO PA
+        ON 
+        	EM.BO_CODE = PA.BO_CODE
+       WHERE EM.BO_CODE = #{boCode}
+        	<!-- <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchBoCode)">
+				EM.BO_CODE = #{searchBoCode}	
+        	</if> -->
+        	<!-- <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(positionNm)">
+        		<choose>
+	                <when test="positionNm eq 'ETC' ">
+	                	AND NVL(PO.POSTION_FULLNAME, '팀원') NOT LIKE '%팀장%' AND NVL(PO.POSTION_FULLNAME, '팀원') NOT LIKE '%부점장%'
+	                </when>
+	                <otherwise>
+	                	AND PO.POSTION_FULLNAME LIKE '%'|| #{positionNm} || '%'
+	                </otherwise>
+	            </choose>
+        	</if> -->
+	        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)">
+	            <choose>
+	                <when test="searchWordType eq 'empName' ">
+	                    AND EM.EMPL_NAME LIKE #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'emplId' ">
+	                    AND EM.EMPL_ID LIKE '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'BoCode' ">
+	                    AND EM.BO_CODE LIKE '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'partName' ">
+	                    AND PA.PART_NAME LIKE '%'|| #{searchWord} || '%'
+	                </when>
+	            </choose>
+	        </if>
+        ORDER BY EM.EMPL_POSITION DESC
+    </sql>
+
+<!-- 결제선 승인자 검색 총 건수  -->
+    <select id="findTotalCount" resultType="java.lang.Integer">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.findTotalCount */
+        SELECT COUNT(*) FROM (
+        <include refid="EMPLOYEE"/>
+        )
+    </select>
+    
+<!-- 결제선 승인자 검색  -->
+    <select id="findEmployee" resultType="com.ibk.msg.web.smsreq.SmsReqEmployeeInfo">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.findEmployee */
+        <include refid="PaginationMapper.header"/>
+        <include refid="EMPLOYEE"/>
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+
+
+		<!-- TSUMSSU 테이블 명 매칭 -->
+<!-- TSUMSSU21  => TB_CMC_DRF002M -->
+<!-- TSUMSSU26  => TB_CMC_DRF003M -->
+<!-- TSUMSSU28  => TB_CMC_DRF003D -->
+<!-- TSUMSSU30  => TB_CMC_DRF004M -->
+<!-- TSUMSSU31  => TB_CMC_DRF004D -->
+
+
+<!-- 그룹유니크코드 채번 -->
+	<select id="getGroupUniqNo" resultType="java.lang.String">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.getGroupUniqNo */
+		SELECT KIUPSMS.SQ_UMSSU21_GROUPID.nextval FROM DUAL
+	</select>
+
+<!-- T21 저장  -->
+	<insert id="saveT21">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.saveT21 */
+		INSERT INTO DACOM_DIST.TB_CMC_DRF002M
+		(
+			GROUP_CO_CD
+			, GROUP_UNIQ_NO
+			, BATCH_TAGT_UNIQ_NO
+			, BZWK_CHNL_CD
+			, BZWK_IDNFR
+			, TMPT_UNIQ_NO
+			, GROUP_NM
+			, MSG_DSTIC
+			, APPROVAL_YN
+			, PRCSS_STUS_DSTIC
+			, REQUESTS_NUMBER
+			, SEND_PRITY_DSTIC
+			, PENGAG_YMS
+			, EXPIRE_SCHEDULE_YMS
+			, SEND_START_YMS
+			, SEND_EXPIRE_YMS
+			, SEND_PROGRESS_NUMBER
+			, SCHEDULE_DSTIC
+			, TEST_YN
+			, INST
+			, RECV_REFUSAL_YN
+			, REG_YMS
+			, REG_EMP_NO
+			, SEND_EMPID
+			, SEND_BRNCD
+			, SNDR_TELNO
+			, SNDR_NO_ADDRESS
+			, RECV_NO_ADDRESS
+			, FILTER_LIMIT_YN
+			, TEST_NO
+			, RECV_NO_VAR
+			, PROGRESS_STEP
+            , BUDGET_CONSULT_TEXT
+            , SEND_PURPOSE
+            , LAW_DELIBERATION_YN
+            , LAW_DELIBERATION_TEXT
+            , REL_DEPT_CONSULT_TEXT
+            , RECEIVE_AGREE_CHECK_YN
+            , DUPLICATE_CHECK_YN
+		)
+		VALUES
+		(
+			#{groupCoCd}
+			, #{groupUniqNo}
+			, #{groupUniqNo}
+			, #{bzwkChnlCd}
+			, #{bzwkIdnfr}
+			, #{groupUniqNo}
+			, #{groupNm}
+			, #{msgDstic}
+			, #{approvalYn}
+			, #{prcssStusDstic}
+			, #{requestsNumber}
+			, #{sendPrityDstic}
+			, #{pengagYms}
+			, #{expireScheduleYms}
+			, #{sendStartYms}
+			, #{sendExpireYms}
+			, #{sendProgressNumber}
+			, #{scheduleDstic}
+			, #{testYn}
+			, #{inst}
+			, #{recvRefusalYn}
+			, TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+			, #{emplId}
+			, #{emplId}
+			, #{boCode}
+			, #{sndrTelno}
+			, #{sndrNoAddress}
+			, #{recvNoAddress}
+			, #{filterLimitYn}
+			, #{testNo}
+			, #{recvNoVar}
+            , #{progressStep}
+            , #{budgetConsultText}
+            , #{sendPurpose}
+            , #{lawDeliberationYn}
+            , #{lawDeliberationText}
+            , #{relDeptConsultText}
+            , #{receiveAgreeCheckYn}
+            , #{duplicateCheckYn}
+		)
+	</insert>
+
+<!-- T21 수정  -->	
+	<update id="updateT21" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.updateT21 */
+		UPDATE DACOM_DIST.TB_CMC_DRF002M
+		   SET GROUP_NM = #{groupNm}
+		   	   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(msgDstic)">
+			   , MSG_DSTIC = #{msgDstic}
+			   </if>
+			   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(requestsNumber)">
+			   , REQUESTS_NUMBER = #{requestsNumber}
+			   </if>
+			   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(bzwkIdnfr)">
+			   , BZWK_IDNFR = #{bzwkIdnfr}
+			   </if>
+			   , INST = #{inst}
+			   , SNDR_TELNO = #{sndrTelno}
+			   , PENGAG_YMS = #{pengagYms}
+			   , PROGRESS_STEP  = #{progressStep}
+               , BUDGET_CONSULT_TEXT = #{budgetConsultText}
+               , SEND_PURPOSE = #{sendPurpose}
+               , LAW_DELIBERATION_YN = #{lawDeliberationYn}
+               , LAW_DELIBERATION_TEXT = #{lawDeliberationText}
+               , REL_DEPT_CONSULT_TEXT = #{relDeptConsultText}
+               , RECEIVE_AGREE_CHECK_YN = #{receiveAgreeCheckYn}
+               , DUPLICATE_CHECK_YN = #{duplicateCheckYn}
+		 WHERE GROUP_UNIQ_NO = ${groupUniqNo}
+	</update>
+
+<!-- T21_INFO 저장  -->	
+	<insert id="saveT21_INFO" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.saveT21_INFO */
+		INSERT INTO DACOM_DIST.TB_CMC_DRF002D
+		(
+			CENSOR_ID
+			, BUDGET_NM
+			, MODIFY_REASON
+			, STOP_REASON
+			, EMPL_ID
+			, BO_CODE
+			, IMAGE_COUNT
+			, SUCCESS_COUNT
+			, ERROR_COUNT
+			, TARGET_FILE_PATH
+			, MSG_CTNT
+			, UMS_MSG_CTNT
+			, GROUP_UNIQ_NO
+			, SEND_TYPE
+			, REPLACE_VARIABLE_VAL
+			, SEQ1
+			, SEQ2
+			, SEQ3
+			, KKO_TMPL_CD
+			, CHANNEL_TMPL_ID
+            , CHANNEL_MSG_STANDARD
+            , CHANNEL_MSG_TEXT
+            , CHANNEL_BUTTON_TEXT
+            , CHANNEL_OPTION_TEXT
+            , ALT_MSG_DIV
+            , ALT_MSG_TITLE
+            , ALT_MSG_TEXT
+            , TARGET_FILE_ID
+		)
+		VALUES
+		(
+			#{censorId}
+			, #{budgetNm}
+			, #{modifyReason}
+			, #{stopReason}
+			, #{emplId}
+			, #{boCode}
+			, #{imageCount}
+			, #{successCount}
+			, #{errorCount}
+			, #{targetFilePath}
+			, #{msgCtnt}
+			, #{umsMsgCtnt}
+			, #{groupUniqNo}
+			, #{sendType}
+			, #{replaceVariableVal}
+			, #{seq1}
+			, #{seq2}
+			, #{seq3}
+			, #{kkoTmplCd}
+			, #{channelTmplId}
+            , #{channelMsgStandard}
+            , #{channelMsgText}
+            , #{channelButtonText}
+            , #{channelOptionText}
+            , #{altMsgDiv}
+            , #{altMsgTitle}
+            , #{altMsgText}
+            , #{targetFileId}
+		)
+	</insert>
+
+<!-- T21_INFO 수정  -->	
+	<update id="updateT21_INFO" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.updateT21_INFO */
+		UPDATE DACOM_DIST.TB_CMC_DRF002D
+		   SET SEND_TYPE = #{sendType}
+			   , MSG_CTNT = #{msgCtnt}
+			   , UMS_MSG_CTNT = #{umsMsgCtnt}
+			   , MODIFY_REASON = #{modifyReason}
+			   , REPLACE_VARIABLE_VAL = #{replaceVariableVal}
+			   , IMAGE_COUNT = #{imageCount}
+			   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(targetFilePath)">
+			   , TARGET_FILE_PATH = #{targetFilePath}
+			   </if>
+	           , SEQ1 = #{seq1}
+	           , SEQ2 = #{seq2}
+	           , SEQ3 = #{seq3}
+			   , KKO_TMPL_CD = #{kkoTmplCd}
+			   , CHANNEL_TMPL_ID = #{channelTmplId}
+               , CHANNEL_MSG_STANDARD = #{channelMsgStandard}
+               , CHANNEL_MSG_TEXT = #{channelMsgText}
+               , CHANNEL_BUTTON_TEXT = #{channelButtonText}
+               , CHANNEL_OPTION_TEXT = #{channelOptionText}
+               , ALT_MSG_DIV = #{altMsgDiv}
+               , ALT_MSG_TITLE = #{altMsgTitle}
+               , ALT_MSG_TEXT = #{altMsgText}
+               , TARGET_FILE_ID = #{targetFileId}
+		 WHERE GROUP_UNIQ_NO = ${groupUniqNo}
+	</update>
+
+<!-- T30 저장  -->	
+	<insert id="saveT30" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.saveT30 */
+		INSERT INTO DACOM_DIST.TB_CMC_DRF004M
+		(
+			SCHEDULE_UNIQ_NO
+			,GROUP_CO_CD
+			,SCHEDULE_TAGT_DSTIC
+			,GROUP_UNIQ_NO
+			,TAGT_UNIQ_NO
+			,SEND_STUS_DSTIC
+			,BZWK_IDNFR
+			,SCHEDULE_DSTIC
+			,PENGAG_YMS
+			,ALARM_PERIOD_NUMBER
+			,SCHEDULE_OPTN
+			,TOT_NUMBER
+			,SECTION_NUMBER
+			,INTERVAL_TIME
+		)
+		SELECT 
+				KIUPSMS.SQ_UMSSU21_GROUPID.nextval AS SCHEDULE_UNIQ_NO, A.*
+		FROM
+		(
+		<foreach collection="sendDateInfo" item="sendDate" separator="UNION ALL">
+			SELECT			
+				#{sendDate.groupCoCd}				AS GROUP_CO_CD
+				,#{sendDate.scheduleTagtDstic}		AS SCHEDULE_TAGT_DSTIC
+				,#{sendDate.groupUniqNo}			AS GROUP_UNIQ_NO
+				,#{sendDate.groupUniqNo}			AS TAGT_UNIQ_NO
+				,#{sendDate.sendStusDstic}			AS SEND_STUS_DSTIC
+				,#{sendDate.bzwkIdnfr}				AS BZWK_IDNFR
+				,#{sendDate.scheduleDstic}			AS SCHEDULE_DSTIC
+				,#{sendDate.pengagYms}				AS PENGAG_YMS
+				,#{sendDate.alarmPeriodNumber}	AS ALARM_PERIOD_NUMBER
+				,#{sendDate.scheduleOptn}			AS SCHEDULE_OPTN
+				,#{sendDate.totNumber}				AS TOT_NUMBER
+				,#{sendDate.sectionNumber}			AS SECTION_NUMBER
+				,#{sendDate.intervalTime}				AS INTERVAL_TIME
+			FROM
+				DUAL
+		</foreach>
+		)A
+	</insert>
+
+<!-- T30 삭제  -->	
+	<delete id="deleteT30" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.deleteT30 */
+		DELETE FROM DACOM_DIST.TB_CMC_DRF004M WHERE GROUP_UNIQ_NO = #{groupUniqNo}
+	</delete>
+	
+<!-- T32 저장  -->	
+	<insert id="saveT32" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.saveT32 */
+		INSERT ALL 
+		<foreach collection="confirmEmp" item="confirmData">
+			INTO DACOM_DIST.TB_CMC_DRF001M
+			(
+				GROUP_UNIQ_NO
+				,EMPL_ID
+				,AGREE_TYPE
+				,AGREE_STATUS
+				,REQUESTS_YMS
+				,CONFIRM_YMS
+				,DRAFTER_NM
+			)
+			VALUES
+			(
+				#{confirmData.groupUniqNo}
+				,#{confirmData.emplId}
+				,#{confirmData.agreeType}
+				,#{confirmData.agreeStatus}
+				,TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+				,#{confirmData.confirmYms}
+				,#{confirmData.drafterNm}
+			)
+		</foreach>
+		SELECT * FROM DUAL
+	</insert>
+
+<!-- T32 삭제  -->	
+	<delete id="deleteT32" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.deleteT32 */
+		DELETE FROM DACOM_DIST.TB_CMC_DRF001M WHERE GROUP_UNIQ_NO = #{groupUniqNo}
+	</delete>	
+	
+	
+	
+<!-- ============================================================================================================== -->
+	
+<!-- 그룹고유번호에 해당하는 T21 정보 조회 -->
+	<select id="selectT21" resultType="com.ibk.msg.web.smsreq.SmsReqData">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.selectT21 */
+		SELECT
+		    T21.GROUP_CO_CD
+		    ,T21.GROUP_UNIQ_NO
+		    ,T21.BATCH_TAGT_UNIQ_NO
+		    ,T21.BZWK_CHNL_CD
+		    ,T21.BZWK_IDNFR
+		    ,T21.TMPT_UNIQ_NO
+		    ,T21.GROUP_NM
+		    ,T21.MSG_DSTIC
+		    ,T21.APPROVAL_YN
+		    ,T21.PRCSS_STUS_DSTIC
+		    ,T21.REQUESTS_NUMBER
+		    ,T21.SEND_PRITY_DSTIC
+		    ,T21.PENGAG_YMS
+		    ,T21.EXPIRE_SCHEDULE_YMS
+		    ,T21.SEND_START_YMS
+		    ,T21.SEND_EXPIRE_YMS
+		    ,T21.SEND_PROGRESS_NUMBER
+		    ,T21.SCHEDULE_DSTIC
+		    ,T21.TEST_YN
+		    ,T21.INST
+		    ,T21.RECV_REFUSAL_YN
+		    ,T21.REG_YMS
+		    ,T21.REG_EMP_NO
+		    ,T21.SEND_EMPID
+		    ,T21.SEND_BRNCD
+		    ,T21.SNDR_TELNO
+		    ,T21.SNDR_NO_ADDRESS
+		    ,T21.RECV_NO_ADDRESS
+		    ,T21.FILTER_LIMIT_YN
+		    ,T21.TEST_NO
+		    ,T21.RECV_NO_VAR
+		    ,T21_INFO.CENSOR_ID
+		    ,T21_INFO.BUDGET_NM
+		    ,T21_INFO.MODIFY_REASON
+		    ,T21_INFO.STOP_REASON
+		    ,T21_INFO.EMPL_ID
+		    ,T21_INFO.BO_CODE
+		    ,T21_INFO.IMAGE_COUNT
+		    ,T21_INFO.SUCCESS_COUNT
+		    ,T21_INFO.ERROR_COUNT
+		    ,T21_INFO.TARGET_FILE_PATH
+		    ,T21_INFO.TARGET_FILE_ID
+		    ,T21_INFO.MSG_CTNT
+		    ,T21_INFO.UMS_MSG_CTNT
+		    ,T21_INFO.GROUP_UNIQ_NO
+		    ,T21_INFO.SEND_TYPE
+		    ,T21_INFO.REPLACE_VARIABLE_VAL
+		FROM
+		    DACOM_DIST.TB_CMC_DRF002M T21
+		LEFT JOIN
+		    DACOM_DIST.TB_CMC_DRF002D T21_INFO
+		ON 
+		    T21.GROUP_UNIQ_NO = T21_INFO.GROUP_UNIQ_NO
+		WHERE
+		    T21.GROUP_UNIQ_NO = #{groupUniqNo}
+	</select>
+
+<!-- 그룹고유번호에 해당하는 T30(스케쥴) 정보 조회 -->
+	<select id="selectT30" resultType="com.ibk.msg.web.smsreq.T30Data">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.selectT30 */
+		SELECT GROUP_CO_CD
+		       , SCHEDULE_UNIQ_NO
+		       , SCHEDULE_TAGT_DSTIC
+		       , GROUP_UNIQ_NO
+		       , TAGT_UNIQ_NO
+		       , SEND_STUS_DSTIC
+		       , BZWK_IDNFR
+		       , SCHEDULE_DSTIC
+		       , PENGAG_YMS
+		       , ALARM_PERIOD_NUMBER
+		       , SCHEDULE_OPTN
+		       , TOT_NUMBER
+		       , SECTION_NUMBER
+		       , INTERVAL_TIME
+		  FROM DACOM_DIST.TB_CMC_DRF004M
+		 WHERE GROUP_UNIQ_NO = #{groupUniqNo}
+	</select>
+
+<!-- 그룹고유번호에 해당하는 T32(승인자) 정보 조회 -->
+	<select id="selectT32" resultType="com.ibk.msg.web.smsreq.T32Data">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.selectT32 */
+		SELECT
+		    T32.GROUP_UNIQ_NO
+		    ,T32.EMPL_ID
+		    ,T32.AGREE_TYPE
+		    ,T32.AGREE_STATUS
+		    ,T32.REQUESTS_YMS
+		    ,T32.CONFIRM_YMS
+		    ,T32.DRAFTER_NM
+		    ,NVL(T32.EMPL_NAME,NVL(EM.EMPL_NAME,UI.EMPL_NAME)) AS EMPL_NAME
+		    ,EM.EMPL_CLASS
+	        ,NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+	        ,NVL(PA.PART_NAME,'-') AS PART_NAME
+        FROM 
+        	(
+        		SELECT GROUP_UNIQ_NO, EMPL_ID, AGREE_TYPE, AGREE_STATUS, REQUESTS_YMS, CONFIRM_YMS, DRAFTER_NM, null AS EMPL_NAME, 'Y' AS VIEW_DATA_YN FROM DACOM_DIST.TB_CMC_DRF001M
+        		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(agreeExistenceYn)">
+				UNION ALL 
+					SELECT ${groupUniqNo} AS GROUP_UNIQ_NO, EMPL_ID AS EMPL_ID, USER_LEVEL AS AGREE_TYPE, 'I' AS AGREE_STATUS, '' AS REQUESTS_YMS, '' AS CONFIRM_YMS, '' AS DRAFTER_NM, EMPL_NAME AS EMPL_NAME, 'N' AS VIEW_DATA_YN FROM DACOM_DIST.TB_CMC_MNG001M WHERE USER_LEVEL IN (${agreeExistenceYn})
+        		</if>
+        	)T32
+        LEFT OUTER JOIN
+        	KIUPSMS.EMPLOYEE_INFO EM
+        ON
+        	T32.EMPL_ID = EM.EMPL_ID
+        LEFT OUTER JOIN
+        	DACOM_DIST.TB_CMC_MNG001M UI
+        ON
+        	T32.EMPL_ID = UI.EMPL_ID
+        LEFT OUTER JOIN 
+        	KIUPSMS.EMPLOYEE_POSITION_INFO PO
+        ON 
+        	EM.EMPL_POSITION = PO.POSITION_CODE
+    	LEFT OUTER JOIN 
+    		KIUPSMS.PART_INFO PA
+        ON 
+        	EM.BO_CODE = PA.BO_CODE
+  		WHERE
+		    GROUP_UNIQ_NO = #{groupUniqNo}
+	</select>
+	
+<!-- T32 2차, 3차 존재여부 확인 -->
+	<select id="checkT32AgreeList" resultType="com.ibk.msg.web.smsreq.T32Data">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.checkT32AgreeList */
+		SELECT
+			AGREE_TYPE
+        FROM 
+        	DACOM_DIST.TB_CMC_DRF001M
+  		WHERE
+		    GROUP_UNIQ_NO = #{groupUniqNo}
+		   	AND AGREE_TYPE NOT IN (1, 4)
+        GROUP BY AGREE_TYPE
+	</select>
+
+
+	<update id="updateT28InputOrigin" >
+		/* com.ibk.msg.web.smsreq.SmsReqDao.updateT28InputOrigin */
+		UPDATE 
+			DACOM_DIST.TB_CMC_DRF003D
+		SET
+			INPUT_ORIGIN = #{hdata}
+		WHERE
+			BATCH_TAGT_UNIQ_NO = ${groupUniqNo}
+	</update>
+	
+	<!-- 카카오알림톡 템플릿 건수 조회  -->
+    <select id="findAlimTalkTotalCount" resultType="int">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.findAlimTalkTotalCount */
+    	SELECT COUNT(1)
+    	  FROM (
+    	  		SELECT KKO_TMPL_CD
+                       , SND_PROPKEY
+                       , BIZ_CD
+                       , BIZ_TMPL_CD
+                       , TMPL_NM
+                       , TMPL_MSG
+                       , BTN_INFO
+                       , RESND_YN
+                       , ACTIVE_YN
+                       , REG_YMS
+                       , UPDT_YMS
+                       , STATUS_AD
+                       , BLOCK_NUM
+                       , TYPE_GB
+                       , SENDER_KEY_TYPE
+                       , TEMPLATE_MESSAGE_TYPE
+                       , TEMPLATE_EMPHASIZE_TYPE
+                       , TEMPLATE_EXTRA
+                       , TEMPLATE_IMAGE_NAME
+                       , TEMPLATE_IMAGE_URL
+                       , TEMPLATE_TITLE
+                       , TEMPLATE_SUBTITLE
+                       , TEMPLATE_HEADER
+                       , TEMPLATE_ITEM_HIGHLIGHT
+                       , TEMPLATE_ITEM
+                       , CATEGORY_CODE
+                       , SECURITY_FLAG
+                       , QUICK_REPLIES
+                       , ATTACHMENT
+                       , SINCE
+                       , PAGE
+                       , REG_USER_ID
+                       , UPDT_USER_ID
+                       , APPR_RESULT
+                       , APPR_REQ_YMD
+                       , APPR_YMD
+                       , APPR_REQ_USER_ID
+		          FROM DACOM_DIST.TB_KKO_TMPL
+		         WHERE APPR_RESULT = '승인완료'
+		        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(regYms)">
+		       		AND SUBSTR(REG_YMS, 0, 8) = #{regYms}
+		        </if>
+		        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)">
+					AND (KKO_TMPL_CD LIKE '%'|| #{searchWord} || '%' OR TMPL_NM LIKE '%'|| #{searchWord} || '%')
+		        </if>
+		      ORDER BY REG_YMS DESC
+    	  )
+    </select>
+    
+    <!-- 카카오알림톡 템플릿 조회  -->
+    <select id="findAlimTalk" resultType="com.ibk.msg.web.smsreq.AlimTalkInfo">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.findAlimTalk */
+        <include refid="PaginationMapper.header"/>
+        SELECT KKO_TMPL_CD
+               , SND_PROPKEY
+               , BIZ_CD
+               , BIZ_TMPL_CD
+               , TMPL_NM
+               , TMPL_MSG
+               , BTN_INFO
+               , RESND_YN
+               , ACTIVE_YN
+               , REG_YMS
+               , UPDT_YMS
+               , STATUS_AD
+               , BLOCK_NUM
+               , TYPE_GB
+               , SENDER_KEY_TYPE
+               , TEMPLATE_MESSAGE_TYPE
+               , TEMPLATE_EMPHASIZE_TYPE
+               , TEMPLATE_EXTRA
+               , TEMPLATE_IMAGE_NAME
+               , TEMPLATE_IMAGE_URL
+               , TEMPLATE_TITLE
+               , TEMPLATE_SUBTITLE
+               , TEMPLATE_HEADER
+               , TEMPLATE_ITEM_HIGHLIGHT
+               , TEMPLATE_ITEM
+               , CATEGORY_CODE
+               , SECURITY_FLAG
+               , QUICK_REPLIES
+               , ATTACHMENT
+               , SINCE
+               , PAGE
+               , REG_USER_ID
+               , APPR_RESULT
+               , APPR_REQ_YMD
+               , APPR_YMD
+               , APPR_REQ_USER_ID
+          FROM DACOM_DIST.TB_KKO_TMPL
+         WHERE APPR_RESULT = '승인완료'
+        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(regYms)">
+       		AND SUBSTR(REG_YMS, 0, 8) = #{regYms}
+        </if>
+        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)">
+			AND (KKO_TMPL_CD LIKE '%'|| #{searchWord} || '%' OR TMPL_NM LIKE '%'|| #{searchWord} || '%')
+        </if>
+      ORDER BY REG_YMS DESC
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+    
+    <!-- 카카오알림톡 템플릿 상세 조회  -->
+	<select id="selectAlimTalkDetail" resultType="com.ibk.msg.web.smsreq.AlimTalkInfo">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.selectAlimTalkDetail */
+        SELECT KKO_TMPL_CD
+               , SND_PROPKEY
+               , BIZ_CD
+               , BIZ_TMPL_CD
+               , TMPL_NM
+               , TMPL_MSG
+               , BTN_INFO
+               , RESND_YN
+               , ACTIVE_YN
+               , REG_YMS
+               , UPDT_YMS
+               , STATUS_AD
+               , BLOCK_NUM
+               , TYPE_GB
+               , SENDER_KEY_TYPE
+               , TEMPLATE_MESSAGE_TYPE
+               , TEMPLATE_EMPHASIZE_TYPE
+               , TEMPLATE_EXTRA
+               , TEMPLATE_IMAGE_NAME
+               , TEMPLATE_IMAGE_URL
+               , TEMPLATE_TITLE
+               , TEMPLATE_SUBTITLE
+               , TEMPLATE_HEADER
+               , TEMPLATE_ITEM_HIGHLIGHT
+               , TEMPLATE_ITEM
+               , CATEGORY_CODE
+               , SECURITY_FLAG
+               , QUICK_REPLIES
+               , ATTACHMENT
+               , SINCE
+               , PAGE
+               , REG_USER_ID
+               , APPR_RESULT
+               , APPR_REQ_YMD
+               , APPR_YMD
+               , APPR_REQ_USER_ID
+          FROM DACOM_DIST.TB_KKO_TMPL
+         WHERE KKO_TMPL_CD = #{kkoTmplCd}
+    </select>
+    
+    <!-- rcs 템플릿 건수 조회  -->
+    <select id="findRcsTemplateTotalCount" resultType="int">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.findRcsTemplateTotalCount */
+    	SELECT COUNT(1)
+    	  FROM (
+    	  		SELECT REQ.SEQ
+                       , REQ.MSGBASE_ID
+                       , REQ.MSGBASE_FORM_ID
+                       , REQ.REQ_YMD
+                       , REQ.BR_ID
+                       , REQ.AGENCY_ID
+                       , REQ.PRODUCTCODE
+                       , REQ.SPEC
+                       , REQ.CARD_TYPE
+                       , REQ.MSGBASE_DESC
+                       , REQ.STATUS
+                       , REQ.MSGBASE_ATTRIBUTE
+                       , REQ.POLICY_INFO
+                       , REQ.PARAMS
+                       , REQ.FORMATTED_STRING
+                       , REQ.REG_USER_ID
+                       , REQ.REG_DT
+                       , REQ.UPDATE_DT
+                       , REQ.UPDATE_USER_ID
+                       , REQ.BIZ_CONDITION
+                       , REQ.BIZ_CATEGORY
+                       , REQ.BIZ_SERVICE
+                       , REQ.GUIDE_INFO
+                       , REQ.FORM_PARAMS
+                       , REQ.MSGBASE_NM
+                       , REQ.APPR_RESULT
+                       , REQ.APPR_REASON
+                       , REQ.APPR_REQ_YMD
+                       , REQ.APPR_YMD
+		          FROM DACOM_DIST.RCS_MSGBASE_REQ REQ
+    		INNER JOIN DACOM_DIST.RCS_MSGBASE BASE ON REQ.MSGBASE_ID = BASE.MSGBASE_ID
+		         WHERE BASE.STATUS = 'ready'
+		         <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(regDt)">
+		           AND SUBSTR(REQ.REG_DT, 0, 8) = #{regDt}
+		         </if>
+		         <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)">
+				   AND (REQ.MSGBASE_ID like '%' || #{searchWord} || '%'
+		           		OR REQ.CARD_TYPE = #{searchWord}
+		                OR REQ.BIZ_SERVICE = #{searchWord}
+		                OR REQ.MSGBASE_NM like '%' || #{searchWord} || '%'
+	                )
+			     </if>
+		      ORDER BY REQ.REG_DT DESC
+    	  )
+    </select>
+    
+    <!-- rcs 템플릿 조회  -->
+    <select id="findRcsTemplate" resultType="com.ibk.msg.web.smsreq.RcsTemplateInfo">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.findRcsTemplate */
+        <include refid="PaginationMapper.header"/>
+	        SELECT REQ.SEQ
+                   , REQ.MSGBASE_ID
+                   , REQ.MSGBASE_FORM_ID
+                   , REQ.REQ_YMD
+                   , REQ.BR_ID
+                   , REQ.AGENCY_ID
+                   , REQ.PRODUCTCODE
+                   , REQ.SPEC
+                   , REQ.CARD_TYPE
+                   , REQ.MSGBASE_DESC
+                   , REQ.STATUS
+                   , REQ.MSGBASE_ATTRIBUTE
+                   , REQ.POLICY_INFO
+                   , REQ.PARAMS
+                   , REQ.FORMATTED_STRING
+                   , REQ.REG_USER_ID
+                   , REQ.REG_DT
+                   , REQ.UPDATE_DT
+                   , REQ.UPDATE_USER_ID
+                   , REQ.BIZ_CONDITION
+                   , REQ.BIZ_CATEGORY
+                   , REQ.BIZ_SERVICE
+                   , REQ.GUIDE_INFO
+                   , REQ.FORM_PARAMS
+                   , REQ.MSGBASE_NM
+                   , REQ.APPR_RESULT
+                   , REQ.APPR_REASON
+                   , REQ.APPR_REQ_YMD
+                   , REQ.APPR_YMD
+	               , CASE WHEN REQ.CARD_TYPE = 'description' THEN '서술(description)'
+	                      ELSE '스타일(cell)'
+	                 END AS FMT_CARD_TYPE
+   			  FROM DACOM_DIST.RCS_MSGBASE_REQ REQ
+    	INNER JOIN DACOM_DIST.RCS_MSGBASE BASE ON REQ.MSGBASE_ID = BASE.MSGBASE_ID
+	         WHERE BASE.STATUS = 'ready'
+	    	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(regDt)">
+	    	   AND SUBSTR(REQ.REG_DT, 0, 8) = #{regDt}
+	    	</if>
+	    	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)">
+	           AND (REQ.MSGBASE_ID like '%' || #{searchWord} || '%'
+	           		OR REQ.CARD_TYPE = #{searchWord}
+	                OR REQ.BIZ_SERVICE = #{searchWord}
+	                OR REQ.MSGBASE_NM like '%' || #{searchWord} || '%'
+                )
+	        </if>
+	      ORDER BY REQ.REG_DT DESC
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+    
+    <!-- 발송대상자 조회 카운트  -->
+    <select id="sendTargetListTotalCount" resultType="int">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.sendTargetListTotalCount */
+    	SELECT COUNT(1)
+  	      FROM DACOM_DIST.TB_CMC_DRF003D T28
+         WHERE T28.BATCH_TAGT_UNIQ_NO = #{batchTagtUniqNo}
+        <if test='@org.apache.commons.lang3.StringUtils@isNotEmpty(duplicateCheckYn) and duplicateCheckYn == "Y"'>
+           AND T28.VERIF_RSULT_CD != 'DC'
+        </if>
+    </select>
+    
+    <!-- 발송대상자 조회  -->
+    <select id="sendTargetList" resultType="com.ibk.msg.web.smsreq.SendTargetInfo">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.sendTargetList */
+        <include refid="PaginationMapper.header"/>
+         	SELECT A.*
+         	       , (SELECT DSPLY_NM FROM DACOM_DIST.TB_CMC_MNG005C WHERE CMMN_CD = '대상자검증결과코드' AND CD_VALUE = A.VERIF_RSULT_CD) AS VERIF_RSULT_CD_NM
+         	       , COUNT(CASE WHEN A.VERIF_RSULT_CD = '00' THEN 1 ELSE NULL END) OVER() AS SUCC_CNT
+         	       , COUNT(CASE WHEN (A.VERIF_RSULT_CD != '00' AND A.VERIF_RSULT_CD != 'DC') THEN 1 ELSE NULL END) OVER() AS ERR_CNT
+        	  FROM (
+			        SELECT T28.GROUP_CO_CD
+		                   , T28.REG_STANDARD_YMD
+		                   , T28.TAGT_UNIQ_NO
+		                   , T28.BATCH_TAGT_UNIQ_NO
+		                   , T28.SEND_STUS_DSTIC
+		                   , T28.PLNG_KEY
+		                   , T28.PLNG_HMS
+		                   , T28.REG_YMS
+		                   , TO_CHAR(TO_DATE(T28.REG_YMS, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI') AS REG_YMS_FMT
+		                   , T28.CPHN_NO
+		                   , T28.RECV_NO_ADDRESS
+		                   , T28.CUST_UNIQ_NO
+		                   , T28.CUST_IDNFR
+		                   , T28.UMSID
+		                   , T28.CUST_NM
+		                   <choose>
+		                   	<when test='@org.apache.commons.lang3.StringUtils@isNotEmpty(duplicateCheckYn) and duplicateCheckYn == "Y"'>
+				            	, T28.VERIF_RSULT_CD
+		                   	</when>
+		                   	<otherwise>
+		                   		, (CASE WHEN T28.VERIF_RSULT_CD = 'DC' THEN '00' ELSE T28.VERIF_RSULT_CD END) AS VERIF_RSULT_CD
+		                   	</otherwise>
+		                   </choose>
+		                   , T28.BZWK_SEVR_RCEPT_IDNFR
+		                   , T28.INPUT_ORIGIN
+		                   , T28.REPLACE_VARIABLE_STANDARD
+		                   , T28.REPLACE_VARIABLE_VAL
+		                   , T28.ORIGIN_SUMMARY_VAL
+		                   , T28.CUST_MGT_NO
+		                   , T28.SEND_EMPID
+		                   , T28.SEND_BRNCD
+		                   , 1 AS VARIABLE1
+		                   , 2 AS VARIABLE2
+		                   , 3 AS VARIABLE3
+		                   , 4 AS VARIABLE4
+		                   , 5 AS VARIABLE5
+		                   , 6 AS VARIABLE6
+		                   , 7 AS VARIABLE7
+		                   , 8 AS VARIABLE8
+		                   , 9 AS VARIABLE9
+		                   , 10 AS VARIABLE10
+		                   <choose>
+		                   	<when test='@org.apache.commons.lang3.StringUtils@isNotEmpty(duplicateCheckYn) and duplicateCheckYn == "Y"'>
+		                   		, COUNT(CASE WHEN VERIF_RSULT_CD = 'DC' THEN 1 ELSE NULL END) OVER() AS DUPL_CNT
+		                   	</when>
+		                   	<otherwise>
+		                   		, 0 AS DUPL_CNT
+		                   	</otherwise>
+		                   </choose>
+		   			  FROM DACOM_DIST.TB_CMC_DRF003D T28
+			         WHERE T28.BATCH_TAGT_UNIQ_NO = #{batchTagtUniqNo}
+       	  	) A
+       	  	<where>
+		        <if test='@org.apache.commons.lang3.StringUtils@isNotEmpty(duplicateCheckYn) and duplicateCheckYn == "Y"'>
+		           AND A.VERIF_RSULT_CD != 'DC'
+		        </if>
+       	  	</where>
+	         ORDER BY A.REG_YMS DESC, A.TAGT_UNIQ_NO ASC
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+    
+    <!-- 업로드한 엑셀의 T26 처리상태 확인  -->
+    <select id="selectTargetFileStatusChk" resultType="com.ibk.msg.web.smsreq.SendTargetMasterInfo">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.selectTargetFileStatusChk */
+    	SELECT CASE WHEN T26.PRCSS_STUS_DSTIC = 'F' THEN 'Y'
+    	            WHEN T26.PRCSS_STUS_DSTIC = 'I' THEN 'I'
+    	            ELSE 'N'
+    	       END AS STATUS
+  	      FROM DACOM_DIST.TB_CMC_DRF003M T26
+         WHERE BATCH_TAGT_UNIQ_NO = #{targetId}
+    </select>
+    
+    <!-- 등록하기 > 메시지 작성 상세 조회  -->
+    <select id="getSmsDetail" resultType="com.ibk.msg.web.smsreq.T21Data">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.getSmsDetail */
+	    SELECT T21.GROUP_CO_CD
+	           , T21.GROUP_UNIQ_NO 
+	           , T21.BATCH_TAGT_UNIQ_NO 
+			   , T21.BZWK_CHNL_CD 
+			   , T21.BZWK_IDNFR  
+			   , T21.TMPT_UNIQ_NO 
+			   , T21.GROUP_NM 
+			   , T21.MSG_DSTIC 
+			   , T21.APPROVAL_YN 
+			   , T21.PRCSS_STUS_DSTIC 
+			   , T21.REQUESTS_NUMBER 
+			   , T21.SEND_PRITY_DSTIC 
+			   , T21.PENGAG_YMS 
+			   , T21.EXPIRE_SCHEDULE_YMS 
+			   , T21.SEND_START_YMS 
+			   , T21.SEND_EXPIRE_YMS 
+			   , T21.SEND_PROGRESS_NUMBER 
+			   , T21.SCHEDULE_DSTIC 
+			   , T21.TEST_YN 
+			   , T21.INST 
+			   , T21.RECV_REFUSAL_YN 
+			   , T21.REG_YMS 
+			   , T21.REG_EMP_NO 
+			   , T21.SEND_EMPID 
+			   , T21.SEND_BRNCD 
+			   , T21.SNDR_TELNO 
+			   , T21.SNDR_NO_ADDRESS 
+			   , T21.RECV_NO_ADDRESS 
+			   , T21.FILTER_LIMIT_YN 
+			   , T21.TEST_NO 
+			   , T21.RECV_NO_VAR 
+			   , T21.PROGRESS_STEP
+			   , T21.BUDGET_CONSULT_TEXT
+			   , T21.SEND_PURPOSE
+			   , T21.LAW_DELIBERATION_YN
+			   , T21.LAW_DELIBERATION_TEXT
+			   , T21.REL_DEPT_CONSULT_TEXT
+			   , T21.RECEIVE_AGREE_CHECK_YN
+			   , T21.DUPLICATE_CHECK_YN
+			   , T21IN.SEND_TYPE
+			   , T21IN.CENSOR_ID
+			   , T21IN.BUDGET_NM
+			   , T21IN.MODIFY_REASON
+			   , T21IN.STOP_REASON
+			   , T21IN.IMAGE_COUNT
+			   , T21IN.SUCCESS_COUNT
+			   , T21IN.ERROR_COUNT
+			   , T21IN.TARGET_FILE_PATH
+			   , T21IN.TARGET_FILE_ID
+			   , T21IN.MSG_CTNT
+			   , T21IN.UMS_MSG_CTNT
+			   , T21IN.REPLACE_VARIABLE_VAL
+			   , T21IN.SEQ1
+			   , T21IN.SEQ2
+			   , T21IN.SEQ3
+			   , (SELECT IMG_NM FROM DACOM_DIST.TB_IMG_TMPL WHERE MMS_IMG_ID = T21IN.SEQ1) AS imgNm1
+			   , (SELECT IMG_NM FROM DACOM_DIST.TB_IMG_TMPL WHERE MMS_IMG_ID = T21IN.SEQ2) AS imgNm2
+			   , (SELECT IMG_NM FROM DACOM_DIST.TB_IMG_TMPL WHERE MMS_IMG_ID = T21IN.SEQ3) AS imgNm3
+			   , T21IN.KKO_TMPL_CD
+			   , T21IN.CHANNEL_TMPL_ID
+               , T21IN.CHANNEL_MSG_STANDARD
+               , T21IN.CHANNEL_MSG_TEXT
+               , T21IN.CHANNEL_BUTTON_TEXT
+               , T21IN.CHANNEL_OPTION_TEXT
+               , T21IN.ALT_MSG_DIV
+               , T21IN.ALT_MSG_TITLE
+               , T21IN.ALT_MSG_TEXT
+               , KKO.TMPL_NM
+               , KKO.TMPL_MSG
+               , KKO.BTN_INFO
+		  FROM DACOM_DIST.TB_CMC_DRF002M T21
+	INNER JOIN DACOM_DIST.TB_CMC_DRF002D T21IN ON (T21.GROUP_UNIQ_NO = T21IN.GROUP_UNIQ_NO)
+	LEFT JOIN DACOM_DIST.TB_KKO_TMPL KKO ON (T21IN.KKO_TMPL_CD = KKO.KKO_TMPL_CD)
+	     WHERE T21.GROUP_UNIQ_NO = #{groupUniqNo}
+	 </select>
+	  
+	 <!-- MMS템플릿 이미지 등록  -->
+	 <insert id="insertImgTmpl" >
+	  	/* com.ibk.msg.web.smsreq.SmsReqDao.insertImgTmpl */
+	  	<selectKey resultType="int" keyProperty="mmsImgId" order="BEFORE">
+	  		SELECT DACOM_DIST.SQ_UMS_TMPLKEY.nextval FROM DUAL  
+	  	</selectKey>
+		INSERT INTO DACOM_DIST.TB_IMG_TMPL (
+			MMS_IMG_ID, IMG_TYPE_CD, IMG_CON, IMG_CTGY_NM, IMG_NM
+			, USE_YN, IMG_SQN, MMS_USER_DFNT_CON, EMN, DVCD
+			, RGSN_TS, MDFC_TS, MSG_DSTIC
+		) VALUES ( 
+			#{mmsImgId}, 'B', #{imgCon}, #{imgCtgyNm}, #{imgNm}
+			, 'Y', #{imgSqn}, #{mmsUserDfntCon}, #{emn}, #{dvcd}, sysdate
+			, sysdate, #{msgDstic}
+		)
+	 </insert>
+	 
+	 <!-- MMS템플릿 이미지 조회  -->
+	 <select id="selectImgTmpl" resultType="com.ibk.msg.web.smsreq.ImgTmplData">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.selectImgTmpl */
+	    SELECT MMS_IMG_ID
+			   , IMG_TYPE_CD
+			   , IMG_CTGY_NM
+			   , IMG_NM
+			   , USE_YN
+			   , IMG_SQN
+			   , MMS_USER_DFNT_CON
+			   , EMN
+			   , DVCD
+		  FROM DACOM_DIST.TB_IMG_TMPL
+		 WHERE MMS_IMG_ID = #{mmsImgId}
+	 </select>
+	 
+	 <!-- MMS템플릿 이미지 삭제 -->
+    <delete id="deleteImgTmpl">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.deleteImgTmpl */
+    	DELETE 
+    	  FROM DACOM_DIST.TB_IMG_TMPL
+    	 WHERE MMS_IMG_ID = #{mmsImgId}
+  	</delete>
+	 
+	 <!-- MMS템플릿 이미지 수정  -->
+	 <update id="updateImgTmpl">
+	 	/* com.ibk.msg.web.smsreq.SmsReqDao.updateImgTmpl */
+		UPDATE DACOM_DIST.TB_IMG_TMPL 
+		   SET MDFC_TS = SYSDATE
+		   	   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(imgCtgyNm)">
+		       , IMG_CTGY_NM = #{imgCtgyNm}
+		       </if>
+		       <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(imgNm)">
+			   , IMG_NM = #{imgNm}
+			   </if>
+			   <if test="imgCon != null">
+			   , IMG_CON = #{imgCon}
+			   </if>
+			   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(useYn)">
+			   , USE_YN = #{useYn}
+			   </if>
+			   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(mmsUserDfntCon)">
+			   , MMS_USER_DFNT_CON = #{mmsUserDfntCon}
+			   </if>
+			   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(imgTypeCd)">
+			   , IMG_TYPE_CD = #{imgTypeCd}
+			   </if>
+			   <if test="imgSqn != 0">
+			   , IMG_SQN = #{imgSqn}
+			   </if>
+		 WHERE MMS_IMG_ID = #{mmsImgId}
+	</update>
+	 
+	 <!-- T21 조회  -->
+	 <select id="selectT21Info" resultType="com.ibk.msg.web.smsreq.SmsReqData">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.selectT21Info */
+	    SELECT T21IN.SEND_TYPE AS SENDTYPE
+			   , T21IN.CENSOR_ID AS CENSORID 
+			   , T21IN.BUDGET_NM AS BUDGETNM
+			   , T21IN.MODIFY_REASON AS MODIFYREASON
+			   , T21IN.STOP_REASON AS STOPREASON
+			   , T21IN.IMAGE_COUNT AS  IMAGECOUNT
+			   , T21IN.SUCCESS_COUNT AS  SUCCESSCOUNT
+			   , T21IN.ERROR_COUNT AS  ERRORCOUNT
+			   , T21IN.TARGET_FILE_PATH AS  TARGETFILEPATH
+			   , T21IN.MSG_CTNT AS  MSGCTNT
+			   , T21IN.UMS_MSG_CTNT AS UMSMSGCTNT
+			   , T21IN.REPLACE_VARIABLE_VAL AS REPLACEVARIABLEVAL
+			   , T21IN.SEQ1
+			   , T21IN.SEQ2
+			   , T21IN.SEQ3
+		  FROM DACOM_DIST.TB_CMC_DRF002D T21IN
+	     WHERE T21IN.GROUP_UNIQ_NO = #{groupUniqNo}
+	  </select>
+	  
+ 	<!-- RCS_MSGBASE_ID 조회  -->
+	<select id="getRcsMsgbaseId" parameterType="map" resultType="map">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.findRcsTemplate */
+        SELECT * 
+        FROM RCS_MSGBASE
+		WHERE APPR_RESULT = '승인'
+		<choose>
+			<when test='MSGBASE_ID != null and MSGBASE_ID != ""'>
+				AND MSGBASE_ID = #{MSGBASE_ID}
+			</when>
+			<otherwise>
+				AND MSGBASE_FORM_ID = 'GG000F'
+			</otherwise>
+		</choose>
+		AND ROWNUM &lt; 2
+    </select>
+    
+    <!-- T26 대상자마스터 삭제 -->
+    <delete id="deleteSendTgtMaster">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.deleteSendTgtMaster */
+    	DELETE 
+    	  FROM DACOM_DIST.TB_CMC_DRF003M
+    	 WHERE BATCH_TAGT_UNIQ_NO = #{targetId}
+  	</delete>
+  	
+  	<!-- T28 대상자 목록 삭제 -->
+	<delete id="deleteSendTgt">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.deleteSendTgt */
+    	DELETE 
+    	  FROM DACOM_DIST.TB_CMC_DRF003D
+    	 WHERE BATCH_TAGT_UNIQ_NO = #{targetId}
+  	</delete>
+  	
+  	<!-- 테스트발송 -->
+  	<insert id="testSend">
+  		/* com.ibk.msg.web.smsreq.SmsReqDao.testSend */
+ 		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(msgDstic)">
+ 			<if test='msgDstic == "SM" or msgDstic == "SR"'>
+	 			INSERT INTO DACOM_DIST.DIST_SMS 
+	 			( 
+	 				TRAN_PR
+	 			  , TRAN_ID
+	 			  , TRAN_PHONE
+	 			  , TRAN_CALLBACK
+	 			  , TRAN_STATUS
+				  , TRAN_RSLT
+				  , TRAN_DATE
+				  , TRAN_MSG
+				  , TRAN_TYPE
+				  , TRAN_ETC1
+				  , TRAN_ETC2
+				  , TRAN_ETC3
+				  , TRAN_ETC4
+				  , CHANNEL_TMPL_ID
+				  , CHANNEL_MSG_STANDARD
+				  , CHANNEL_MSG_TEXT
+				  , CHANNEL_BUTTON_TEXT
+				  , CHANNEL_OPTION_TEXT
+				  , ALT_MSG_DIV
+				  , ALT_MSG_TITLE
+				  , ALT_MSG_TEXT 
+				)
+				VALUES 
+				(
+					KIUPSMS.MMS_MSG_SEQ.nextval
+		    	  , #{bzwkIdnfr} 					
+				  , #{recvNoAddress}			<!-- 테스트 번호 넣기  -->
+				  , #{sndrTelno}
+				  , '1'		 				<!-- TRAN_STATUS -->
+				  , NULL		
+				  , SYSDATE		
+				  , #{msgCtnt}		
+				  , 0						<!-- TRAN_TYPE -->		
+				  , NULL										
+				  , NULL										
+				  , NULL										
+				  , NULL
+				  , #{channelTmplId}
+				  , #{channelMsgStandard}
+				  , #{channelMsgText}
+				  , #{channelButtonText}
+				  , #{channelOptionText}		
+				  , #{altMsgDiv}		
+				  , #{altMsgTitle}		
+				  , #{altMsgText}											
+				)
+ 			</if>
+ 			<if test='msgDstic == "LM" or msgDstic == "LR" or msgDstic == "KM"'>
+				INSERT INTO DACOM_DIST.DIST_MMS_MSG
+				( 
+					MSGKEY
+				  , SUBJECT
+				  , PHONE
+				  , CALLBACK
+				  , STATUS
+				  , RSLT
+				  , REQDATE
+				  , MSG
+				  , FILE_CNT
+				  , FILE_CNT_REAL
+				  , FILE_PATH1
+				  , FILE_PATH1_SIZ
+				  , EXPIRETIME
+				  , ID
+				  , COMPKEY
+				  , CHANNEL_TMPL_ID
+				  , CHANNEL_MSG_STANDARD
+				  , CHANNEL_MSG_TEXT
+				  , CHANNEL_BUTTON_TEXT
+				  , CHANNEL_OPTION_TEXT
+				  , ALT_MSG_DIV
+				  , ALT_MSG_TITLE
+				  , ALT_MSG_TEXT
+				)
+				VALUES 
+				(
+					KIUPSMS.MMS_MSG_SEQ.nextval
+		    	  , #{msgCtnt}			
+				  , #{recvNoAddress}		
+				  , #{sndrTelno}			
+				  , '0'			 		<!-- STATUS -->
+				  , NULL			
+				  , SYSDATE 
+				  , #{umsMsgCtnt}				
+				  , 0				
+				  , 0					<!-- FILE_CNT_REAL -->
+				  , NULL			
+				  , NULL				
+				  , '43200'										
+				  , #{bzwkIdnfr}									
+				  , #{boCode}
+				  , #{channelTmplId}
+				  , #{channelMsgStandard}
+				  , #{channelMsgText}
+				  , #{channelButtonText}
+				  , #{channelOptionText}		
+				  , #{altMsgDiv}		
+				  , #{altMsgTitle}		
+				  , #{altMsgText}		
+				)
+			</if>
+			<if test='msgDstic == "MM" or msgDstic == "MR"'>
+				INSERT INTO DACOM_DIST.DIST_MMS_MSG_IMG
+				( 
+		      		MSGKEY
+		      	  , SUBJECT
+		      	  , PHONE
+		      	  , CALLBACK
+		      	  , STATUS
+				  , RSLT
+				  , REQDATE
+				  , MSG
+				  , FILE_CNT
+				  , SEQ1
+				  , SEQ2
+				  , SEQ3
+				  , EXPIRETIME
+				  , ID
+				  , COMPKEY
+				  , CHANNEL_TMPL_ID
+				  , CHANNEL_MSG_STANDARD
+				  , CHANNEL_MSG_TEXT
+				  , CHANNEL_BUTTON_TEXT
+				  , CHANNEL_OPTION_TEXT
+				  , ALT_MSG_DIV
+				  , ALT_MSG_TITLE
+				  , ALT_MSG_TEXT
+				)
+				VALUES 
+				(
+					KIUPSMS.MMS_MSG_SEQ.nextval
+		    	  , #{msgCtnt}			
+				  , #{recvNoAddress}			
+				  , #{sndrTelno}		
+				  , '0'			 	<!-- STATUS -->
+				  , NULL			
+				  , SYSDATE   
+				  , #{umsMsgCtnt}				
+				  , #{fileCnt}				
+				  , #{seq1}
+				  , #{seq2}			
+				  , #{seq3}				
+				  , '43200'										
+				  , #{bzwkIdnfr}									
+				  , #{boCode}
+				  , #{channelTmplId}
+				  , #{channelMsgStandard}
+				  , #{channelMsgText}
+				  , #{channelButtonText}
+				  , #{channelOptionText}		
+				  , #{altMsgDiv}		
+				  , #{altMsgTitle}		
+				  , #{altMsgText}		
+				)
+			</if>
+ 		</if>
+	</insert>
+	
+	<!-- T21 처리상태구분값 변경 -->
+	<update id='updatePrcssStusDstic'>
+		/* com.ibk.msg.web.smsreq.SmsReqDao.updatePrcssStusDstic */
+  		UPDATE DACOM_DIST.TB_CMC_DRF002M
+           SET PRCSS_STUS_DSTIC = #{prcssStusDstic}
+         WHERE GROUP_UNIQ_NO = #{groupUniqNo} 
+  	</update>
+  	
+  	<!-- T28 1번째 행의 치환변수 값 구하기 -->
+	<select id='getReplaceVal' resultType="com.ibk.msg.web.smsreq.SendTargetInfo">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.getReplaceVal */
+		SELECT REPLACE_VARIABLE_VAL
+          FROM ( 
+          	     SELECT REPLACE_VARIABLE_VAL 
+  				   FROM DACOM_DIST.TB_CMC_DRF003D
+ 				  WHERE BATCH_TAGT_UNIQ_NO = #{groupUniqNo}
+	           ORDER BY BATCH_TAGT_UNIQ_NO DESC, TAGT_UNIQ_NO ASC  
+        )
+         WHERE ROWNUM = 1
+  	</select>
+  	
+  	<!--   -->
+	<insert id="insertExcelBlob" >
+	  	/* com.ibk.msg.web.smsreq.SmsReqDao.insertExcelBlob */
+	  	<selectKey resultType="int" keyProperty="fileId" order="BEFORE">
+	  		SELECT DACOM_DIST.SQ_UMS_FILEKEY.nextval FROM DUAL  
+	  	</selectKey>
+		INSERT INTO DACOM_DIST.TB_FILE_UPLOAD (
+			FILE_ID
+            , FILE_ORG_NM
+            , FILE_NM
+            , FILE_CON
+            , EMN
+            , DVCD
+            , RGSN_TS
+		) VALUES ( 
+			#{fileId}
+			, #{fileOrgNm}
+            , #{fileNm}
+            , #{fileCon}
+            , #{emn}
+            , #{dvcd}
+            , SYSDATE
+		)
+	</insert>
+	 
+	<!-- TB_FILE_UPLOAD 삭제 -->
+    <delete id="deleteFileUploadInfo">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.deleteFileUploadInfo */
+    	DELETE 
+    	  FROM DACOM_DIST.TB_FILE_UPLOAD
+    	 WHERE FILE_ID = #{targetFileId}
+  	</delete>
+  	
+  	<!-- T21 대상자 관련 정보 수정 -->
+    <update id="updateTgtT21">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.updateTgtT21 */
+    	UPDATE DACOM_DIST.TB_CMC_DRF002M
+    	   SET INST = NULL
+    	       , DUPLICATE_CHECK_YN = NULL
+    	       , PROGRESS_STEP = '3'
+    	       , SNDR_TELNO = NULL
+    	 WHERE GROUP_UNIQ_NO = #{targetId}
+  	</update>
+  	
+  	<!-- T22 대상자 관련 정보 수정 및 4단계 정보 초기화 -->
+    <update id="updateTgtT22">
+    	/* com.ibk.msg.web.smsreq.SmsReqDao.updateTgtT22 */
+    	UPDATE DACOM_DIST.TB_CMC_DRF002D
+    	   SET TARGET_FILE_ID = NULL
+    	       , MSG_CTNT = NULL
+               , UMS_MSG_CTNT = NULL
+    	       , REPLACE_VARIABLE_VAL = NULL
+    	       , IMAGE_COUNT = 0
+    	       , SEQ1 = NULL
+               , SEQ2 = NULL
+               , SEQ3 = NULL
+               , KKO_TMPL_CD = NULL
+               , CHANNEL_TMPL_ID = NULL
+               , CHANNEL_MSG_STANDARD = NULL
+               , CHANNEL_MSG_TEXT = NULL
+               , CHANNEL_BUTTON_TEXT = NULL
+               , CHANNEL_OPTION_TEXT = NULL
+               , ALT_MSG_DIV = NULL
+               , ALT_MSG_TITLE = NULL
+               , ALT_MSG_TEXT = NULL
+    	 WHERE GROUP_UNIQ_NO = #{targetId}
+  	</update>
+	 
+	<!-- 사용자정보조회 -->
+	<select id='getUser' resultType="com.ibk.msg.web.smsreq.SmsReqEmployeeInfo">
+		/* com.ibk.msg.web.smsreq.SmsReqDao.getUser */
+		SELECT EMPL_ID
+               , BO_CODE
+               , EMPL_BSNO_7
+               , EMPL_NAME
+               , EMPL_HP_NO
+               , EMPL_CUT
+               , EMPL_CLASS
+               , EMPL_POSITION
+               , EMAL_ADR
+               , RSPT_CD
+               , ORGZ_ATRB_CD
+          FROM KIUPSMS.EMPLOYEE_INFO
+         WHERE EMPL_ID = #{emplId}
+  	</select>
+	 
+</mapper>

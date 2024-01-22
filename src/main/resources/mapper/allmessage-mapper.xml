@@ -1,0 +1,1391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.allmessage.AllMessageDao">
+
+
+<sql id="ALLMESSAGE"> <!--  ||'(' || NVL(RSLT,'') ||')' -->
+SELECT
+	/* ALLMESSAGE */
+	MSGKEY, DECODE(MESSAGETYPE,'KAKAO','',SUBJECT) as SUBJECT, MESSAGETYPE, ID, PHONE,
+	NVL((SELECT UNIT_SYSTEM_NAME FROM KIUPSMS.UNIT_SYSTEM WHERE SUBSTR(ID, 1, 2) = UNIT_SYSTEM_CODE), '') AS UNIT_SYSTEM_NAME,
+	CALLBACK, STATUS, 
+	CASE
+		WHEN RSLT = 'd' AND AGENTRSLT='3018'  THEN '수신차단'
+		WHEN RSLT = '3006' AND AGENTRSLT='3018'  THEN '수신차단'
+		ELSE NVL2(RSLT,D.DSPLY_NM,'결과대기')
+	END AS RSLT,
+	TO_CHAR(REQDATE, 'YYYY-MM-DD HH24:MI:SS') AS REQDATE, MSG, FVIA, ETC1, ETC3, RSLTDATE,
+	NVL(DECODE(TELCOINFO, 'SKT','SKT','011','SKT','KTF','KT','016','KT','LGT','LG U+','019','LG U+','KAKAO','KAKAO','KKO','KAKAO','-'),'-') AS TELCOINFO, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3,
+	NVL(B.BZWK_NM, '') AS UNIT_NAME, TRANREFKEY as TRANREFKEY,
+	<!-- CASE
+		WHEN SUBSTR(A.ID,1,2) = 'CC'
+		THEN '메시지센터'
+		WHEN SUBSTR(A.ID,1,2) = 'FM'
+		THEN '통합CRM'
+		WHEN SUBSTR(A.ID,1,2) = 'YC'
+		THEN '연체종합관리 시스템'
+		WHEN SUBSTR(A.ID,1,2) = 'BN'
+		THEN '방카슈랑스'
+		WHEN SUBSTR(A.ID,1,2) = 'CI'
+		THEN '카드발급 SMS'
+		WHEN SUBSTR(A.ID,1,2) = 'FL'
+		THEN 'FINE LOAN 114'
+		WHEN SUBSTR(A.ID,1,2) = 'FP'
+		THEN '통합 CRM 약속일 안내'
+		WHEN SUBSTR(A.ID,1,2) = 'MA'
+		THEN '비대면 채널 상품 안내장 발송'
+		WHEN SUBSTR(A.ID,1,2) = 'UC'
+		THEN 'UC메신저'
+		WHEN SUBSTR(A.ID,1,2) = 'YS'
+		THEN '여신종합 시스템'
+		ELSE NVL(B.BZWK_NM, '') 
+	END AS UNIT_NAME, -->
+	CASE
+		WHEN C.VSUB_CODE = '1'
+		THEN (
+			RSPBL_DVSN_NAME || ' ' || RSPBL_PSN_NAME	
+		)
+		ELSE
+			RSPBL_DVSN_NAME || ' ' || RSPBL_PSN_NAME
+	END AS UNIT_PIC,
+	NVL(B.RSPBL_PSN_TELNO,'') AS UNIT_PIC_TELNO,
+	C.VSUB_CODE,
+	B.CS_GUIDE,
+	A.AGENTRSLT, A.REF_CTNT
+FROM
+(
+	SELECT
+		MSGKEY, ID, SUBJECT, MESSAGETYPE, PHONE, '' as TRANREFKEY,
+		CALLBACK, STATUS, RSLT, REQDATE, MSG,
+		FVIA, ETC1, ETC3, RSLTDATE, DECODE(MESSAGETYPE,'KAKAO','KAKAO',TELCOINFO) as TELCOINFO, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3, AGENTRSLT, REF_CTNT
+	FROM 
+	(
+		SELECT
+			MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+			STATUS, RSLT, REQDATE, MSG, FVIA,
+			ETC1, ETC3, RSLTDATE, TELCOINFO, MESSAGETYPE, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3, AGENTRSLT, REF_CTNT
+		FROM 
+		(
+			SELECT
+				MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, TO_CHAR(RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS RSLTDATE, TELCOINFO,
+				CASE
+					WHEN TYPE = 3 THEN  'KAKAO'
+					WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS' 
+					ELSE 'MMS'
+				END AS MESSAGETYPE, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3, AGENTRSLT
+				<choose>
+					<when test="regDt gt '202101' ">
+						,REF_CTNT
+					</when>
+					<when test="regDt lt '202102' ">
+						,'' as REF_CTNT
+					</when>
+				</choose>
+			FROM
+				DACOM_DIST.DIST_MMS_LOG_${regDt}
+			WHERE
+				(ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR ETC2 IS NULL)
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+				</if> 
+				</if> 
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+				<if test="searchPhoneNumber != null or searchNumber != ''">
+				AND PHONE = #{searchPhoneNumber}
+				</if>
+				</if>
+
+			UNION ALL
+			
+			SELECT
+				MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, MESSAGETYPE, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3, AGENTRSLT, REF_CTNT
+			FROM
+			(
+				SELECT 
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE NVL(TYPE,0) != 3
+
+				UNION ALL
+				SELECT 
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE TYPE=3
+
+				UNION ALL
+				SELECT
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE NVL(TYPE,0) != 3
+
+				UNION ALL
+				SELECT
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE TYPE=3
+				
+				UNION ALL
+				SELECT 
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2,
+					CASE
+						WHEN TYPE=3 THEN  'KAKAO'
+						WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS'
+						ELSE 'MMS'
+					END AS MESSAGETYPE, TO_NUMBER(SEQ1) SEQ1, TO_NUMBER(SEQ2) SEQ2, TO_NUMBER(SEQ3) SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3, AGENTRSLT, '' as REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG_IMG
+
+			)	
+			WHERE 
+				(ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR ETC2 IS NULL)
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+				</if> 
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+				<if test="searchPhoneNumber != null or searchNumber != ''">
+				AND PHONE = #{searchPhoneNumber}
+				</if>
+				</if>
+		)
+	)
+<!-- SMS -->
+	UNION ALL
+	SELECT
+		TRAN_PR AS MSGKEY, TRAN_ID AS ID, NULL AS SUBJECT, MESSAGETYPE, TRAN_PHONE AS PHONE, TRAN_REFKEY as TRANREFKEY,
+		TRAN_CALLBACK AS CALLBACK, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_DATE AS REQDATE, TRAN_MSG AS MSG,
+		NULL AS FVIA, TRAN_ETC1 AS ETC1, TRAN_ETC3 AS ETC3, TRAN_RSLTDATE AS RSLTDATE, TRAN_NET AS TELCOINFO, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3, AGENTRSLT, REF_CTNT
+	FROM
+	(
+		SELECT
+			TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+			TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+			TRAN_ETC1, TRAN_ETC3, DECODE(MESSAGETYPE,'KAKAO','KAKAO',TRAN_NET) as TRAN_NET, TRAN_RSLTDATE, MESSAGETYPE, AGENTRSLT, REF_CTNT
+		FROM 
+		(
+			SELECT
+				TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+				TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+				TRAN_ETC1, TRAN_ETC3, TRAN_NET, TO_CHAR(TRAN_RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS TRAN_RSLTDATE,
+				CASE
+					WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+					ELSE 'SMS'
+				END AS MESSAGETYPE,
+				TRAN_AGENTRSLT as AGENTRSLT
+				<choose>
+					<when test="regDt gt '202101' ">
+						,REF_CTNT
+					</when>
+					<when test="regDt lt '202102' ">
+						,'' as REF_CTNT
+					</when>
+				</choose>
+			FROM
+				DACOM_DIST.DIST_LOG_${regDt}
+			WHERE
+				(TRAN_ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR TRAN_ETC2 IS NULL)
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+				AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+				</if> 
+				</if> 
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+				<if test="searchPhoneNumber != null or searchNumber != ''">
+				AND TRAN_PHONE = #{searchPhoneNumber}
+				</if>
+				</if>
+			
+			UNION ALL
+			
+			SELECT 
+				TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+				TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+				TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, MESSAGETYPE, AGENTRSLT, REF_CTNT
+			FROM
+			(
+				SELECT
+					TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+					TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+					CASE
+						WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+						ELSE 'SMS'
+					END AS MESSAGETYPE,
+					TRAN_AGENTRSLT as AGENTRSLT, REF_CTNT
+				FROM
+					DACOM_DIST.DIST_TRAN 
+				WHERE
+					TRAN_STATUS ='1'
+					OR
+					TRAN_STATUS ='2'
+
+				UNION ALL
+
+				SELECT 
+					TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+					TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+					CASE
+						WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+						ELSE 'SMS'
+					END AS MESSAGETYPE,
+					TRAN_AGENTRSLT as AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_SMS
+				WHERE
+					TRAN_STATUS = '1'
+					OR
+					TRAN_STATUS = '2'
+
+				UNION ALL
+
+				SELECT 
+					TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+					TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+					CASE
+						WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+						ELSE 'SMS'
+					END AS MESSAGETYPE,
+					TRAN_AGENTRSLT as AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_BATCH
+				WHERE
+					TRAN_STATUS = '1'
+					OR
+					TRAN_STATUS = '2'
+			) 
+			WHERE
+				(TRAN_ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR TRAN_ETC2 IS NULL)
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+				AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+				</if> 
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+				<if test="searchPhoneNumber != null or searchPhoneNumber != NULL or searchNumber != ''">
+				AND TRAN_PHONE = #{searchPhoneNumber}
+				</if>
+				</if>
+		)
+	)
+) A,
+<!-- 테이블명 수정(TB_CMC_MNG004D) -->
+DACOM_DIST.TB_CMC_MNG004D B, 
+KIUPSMS.MESSAGE_UNIT C,
+(SELECT CD_VALUE, DSPLY_NM FROM DACOM_DIST.TB_CMC_MNG005C WHERE CMMN_CD = '결과구분코드') D
+WHERE
+	B.BZWK_IDNFR (+) = SUBSTR(A.ID,1,(DECODE(INSTR(A.ID,'_'), 0, LENGTH(A.ID),2)))
+	AND C.UNIT_CODE (+) = SUBSTR(A.ID,1,2)
+	AND D.CD_VALUE (+) = A.RSLT
+ORDER BY
+	REQDATE DESC
+</sql>
+
+<sql id="ALLMESSAGE2"> <!--  ||'(' || NVL(RSLT,'') ||')' -->
+SELECT
+	/* ALLMESSAGE2 */
+	MSGKEY, DECODE(MESSAGETYPE,'KAKAO','',SUBJECT) as SUBJECT, MESSAGETYPE, ID, PHONE,
+	NVL((SELECT UNIT_SYSTEM_NAME FROM KIUPSMS.UNIT_SYSTEM WHERE SUBSTR(ID, 1, 2) = UNIT_SYSTEM_CODE), '') AS UNIT_SYSTEM_NAME,
+	CALLBACK, STATUS, 
+	CASE
+		WHEN RSLT = 'd' AND AGENTRSLT='3018'  THEN '수신차단'
+		WHEN RSLT = '3006' AND AGENTRSLT='3018'  THEN '수신차단'
+		ELSE NVL2(RSLT,D.DSPLY_NM,'결과대기')
+	END AS RSLT,
+	TO_CHAR(REQDATE, 'YYYY-MM-DD HH24:MI:SS') AS REQDATE, MSG, FVIA, ETC1, ETC3, RSLTDATE,
+	NVL(DECODE(TELCOINFO, 'SKT','SKT','011','SKT','KTF','KT','016','KT','LGT','LG U+','019','LG U+','KAKAO','KAKAO','KKO','KAKAO','-'),'-') AS TELCOINFO,
+	NVL(B.BZWK_NM, '') UNIT_NAME, TRANREFKEY as TRANREFKEY,
+	<!-- CASE
+		WHEN SUBSTR(A.ID,1,2) = 'CC'
+		THEN '메시지센터'
+		WHEN SUBSTR(A.ID,1,2) = 'FM'
+		THEN '통합CRM'
+		WHEN SUBSTR(A.ID,1,2) = 'YC'
+		THEN '연체종합관리 시스템'
+		WHEN SUBSTR(A.ID,1,2) = 'BN'
+		THEN '방카슈랑스'
+		WHEN SUBSTR(A.ID,1,2) = 'CI'
+		THEN '카드발급 SMS'
+		WHEN SUBSTR(A.ID,1,2) = 'FL'
+		THEN 'FINE LOAN 114'
+		WHEN SUBSTR(A.ID,1,2) = 'FP'
+		THEN '통합 CRM 약속일 안내'
+		WHEN SUBSTR(A.ID,1,2) = 'MA'
+		THEN '비대면 채널 상품 안내장 발송'
+		WHEN SUBSTR(A.ID,1,2) = 'UC'
+		THEN 'UC메신저'
+		WHEN SUBSTR(A.ID,1,2) = 'YS'
+		THEN '여신종합 시스템'
+		ELSE NVL(B.BZWK_NM, '') 
+	END AS UNIT_NAME, -->
+	CASE
+		WHEN C.VSUB_CODE = '1'
+		THEN (
+
+			RSPBL_DVSN_NAME || ' ' || RSPBL_PSN_NAME
+		)
+		ELSE
+			RSPBL_DVSN_NAME || ' ' || RSPBL_PSN_NAME
+	END AS UNIT_PIC,
+	NVL(B.RSPBL_PSN_TELNO,'') AS UNIT_PIC_TELNO,
+	C.VSUB_CODE,
+	A.AGENTRSLT, A.REF_CTNT
+FROM
+(
+	SELECT
+		MSGKEY, ID, SUBJECT, MESSAGETYPE, PHONE, '' as TRANREFKEY,
+		CALLBACK, STATUS, RSLT, REQDATE, MSG,
+		FVIA, ETC1, ETC3, RSLTDATE, DECODE(MESSAGETYPE,'KAKAO','KAKAO',TELCOINFO) as TELCOINFO, AGENTRSLT, REF_CTNT
+	FROM 
+	(
+		SELECT
+			MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+			STATUS, RSLT, REQDATE, MSG, FVIA,
+			ETC1, ETC3, RSLTDATE, TELCOINFO, MESSAGETYPE, AGENTRSLT, REF_CTNT
+		FROM 
+		(
+			SELECT
+				MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, TO_CHAR(RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS RSLTDATE, TELCOINFO,
+				CASE
+					WHEN TYPE = 3 THEN 'KAKAO'
+					WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS'
+					ELSE 'MMS'
+				END AS MESSAGETYPE
+				, AGENTRSLT
+				<choose>
+					<when test="regDt gt '202101' ">
+						,REF_CTNT
+					</when>
+					<when test="regDt lt '202102' ">
+						,'' as REF_CTNT
+					</when>
+				</choose>
+			FROM
+				DACOM_DIST.DIST_MMS_LOG_${regDt}
+			WHERE
+				(ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR ETC2 IS NULL)
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+				</if> 
+				</if> 
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+				<if test="searchPhoneNumber != null or searchNumber != ''">
+				AND PHONE = #{searchPhoneNumber}
+				</if>
+				</if>
+
+			UNION ALL
+			
+			SELECT
+				MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, MESSAGETYPE, AGENTRSLT, REF_CTNT
+			FROM
+			(
+				SELECT 
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE NVL(TYPE,0) != 3
+					
+				UNION ALL
+				SELECT 
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE TYPE = 3
+					
+				UNION ALL
+				SELECT
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE NVL(TYPE,0) != 3
+
+				UNION ALL
+				SELECT
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE, AGENTRSLT, REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE TYPE = 3
+
+				UNION ALL
+				SELECT 
+					MSGKEY, ID, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2,
+					CASE
+						WHEN TYPE = 3 THEN 'KAKAO'
+						WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS'
+						ELSE 'MMS'
+					END AS MESSAGETYPE, AGENTRSLT, '' as REF_CTNT
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG_IMG
+
+			)	
+			WHERE 
+				(ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR ETC2 IS NULL)
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+				</if> 
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+				<if test="searchPhoneNumber != null or searchNumber != ''">
+				AND PHONE = #{searchPhoneNumber}
+				</if>
+				</if>
+		)
+	)
+<!-- SMS -->
+	UNION ALL
+		SELECT
+			TRAN_PR AS MSGKEY, TRAN_ID AS ID, NULL AS SUBJECT, MESSAGETYPE, TRAN_PHONE AS PHONE, TRAN_REFKEY as TRANREFKEY,
+			TRAN_CALLBACK AS CALLBACK, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_DATE AS REQDATE, TRAN_MSG AS MSG,
+			NULL AS FVIA, TRAN_ETC1 AS ETC1, NULL AS ETC3, '' AS RSLTDATE, TRAN_NET AS TELCOINFO, AGENTRSLT, REF_CTNT
+		FROM
+		(
+			SELECT
+				TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+				TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+				TRAN_ETC1, DECODE(MESSAGETYPE,'KAKAO','KAKAO',TRAN_NET) as TRAN_NET, TRAN_RSLTDATE, MESSAGETYPE, AGENTRSLT, REF_CTNT
+			FROM 
+			(
+				SELECT
+					TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+					TRAN_ETC1, TRAN_NET, TO_CHAR(TRAN_RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS TRAN_RSLTDATE,
+					CASE
+						WHEN TRAN_TYPE = 3 THEN  'KAKAO'
+						ELSE 'SMS'
+					END AS MESSAGETYPE,
+					TRAN_AGENTRSLT as AGENTRSLT
+					<choose>
+						<when test="regDt gt '202101' ">
+							,REF_CTNT
+						</when>
+						<when test="regDt lt '202102' ">
+							,'' as REF_CTNT
+						</when>
+					</choose>
+				FROM
+					DACOM_DIST.DIST_LOG_${regDt}
+				WHERE
+					(TRAN_ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR TRAN_ETC2 IS NULL)
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+					AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+					AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+					</if> 
+					</if> 
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+					<if test="searchPhoneNumber != null or searchNumber != ''">
+					AND TRAN_PHONE = #{searchPhoneNumber}
+					</if>
+					</if>
+				
+				UNION ALL
+				
+				SELECT 
+					TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+					TRAN_ETC1, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, MESSAGETYPE, AGENTRSLT, REF_CTNT
+				FROM
+				(
+					SELECT
+						TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+						TRAN_ETC1, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE,
+						TRAN_AGENTRSLT as AGENTRSLT, REF_CTNT
+					FROM
+						DACOM_DIST.DIST_TRAN 
+					WHERE
+						TRAN_STATUS ='1'
+						OR
+						TRAN_STATUS ='2'
+
+					UNION ALL
+
+					SELECT 
+						TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+						TRAN_ETC1, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE,
+						TRAN_AGENTRSLT as AGENTRSLT, REF_CTNT
+					FROM 
+						DACOM_DIST.DIST_SMS
+					WHERE
+						TRAN_STATUS = '1'
+						OR
+						TRAN_STATUS = '2'
+
+					UNION ALL
+
+					SELECT 
+						TRAN_PR, TRAN_REFKEY, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA,
+						TRAN_ETC1, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE,
+						TRAN_AGENTRSLT as AGENTRSLT, REF_CTNT
+					FROM 
+						DACOM_DIST.DIST_BATCH
+					WHERE
+						TRAN_STATUS = '1'
+						OR
+						TRAN_STATUS = '2'
+				) 
+				WHERE
+					(TRAN_ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR TRAN_ETC2 IS NULL)
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+					AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+					AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+					</if> 
+					</if>
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+					<if test="searchPhoneNumber != null or searchPhoneNumber != NULL or searchNumber != ''">
+					AND TRAN_PHONE = #{searchPhoneNumber}
+					</if>
+					</if>
+			)
+		)
+	) A,
+	<!-- 테이블명 수정(TB_CMC_MNG004D) -->
+	DACOM_DIST.TB_CMC_MNG004D B, 
+	KIUPSMS.MESSAGE_UNIT C,
+	(SELECT CD_VALUE, DSPLY_NM FROM DACOM_DIST.TB_CMC_MNG005C WHERE CMMN_CD = '결과구분코드') D
+WHERE
+	B.BZWK_IDNFR (+) = SUBSTR(A.ID,1,(DECODE(INSTR(A.ID,'_'), 0, LENGTH(A.ID),2)))
+	AND C.UNIT_CODE (+) = SUBSTR(A.ID,1,2)
+	AND D.CD_VALUE (+) = A.RSLT
+ORDER BY
+	REQDATE DESC
+</sql>
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(*) AS CNT                              
+    FROM ( 
+          <include refid="ALLMESSAGE"/> 
+     )
+  </select>
+  
+  <select id="findTotalCount2" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(*) AS CNT                              
+    FROM ( 
+          <include refid="ALLMESSAGE2"/> 
+     )
+  </select>
+  
+  <select id="successCount" resultType="java.lang.Integer">
+  	SELECT
+	COUNT(MSGKEY) AS CNT
+	FROM (
+	SELECT
+		MSGKEY
+	FROM
+		DACOM_DIST.DIST_MMS_LOG_${regDt}
+	WHERE
+		(ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR ETC2 IS NULL)
+	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+	    <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+	   		AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+			AND	TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+	    </if> 
+    </if> 	
+		AND RSLT = '1000'   
+   	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+       <if test="searchPhoneNumber != null or searchPhoneNumber != NULL or searchNumber != ''">
+			AND PHONE = #{searchPhoneNumber}
+   	   </if>
+   	</if>   
+	<!-- UNION ALL
+	SELECT
+		MSGKEY
+	FROM
+		(SELECT 
+			MSGKEY,
+			SUBJECT,
+			PHONE,
+			CALLBACK,
+			STATUS,
+			REQDATE,
+			MSG,
+			FILE_CNT,
+			FILE_CNT_REAL,
+			FILE_PATH1,
+			FILE_PATH1_SIZ,
+			FILE_PATH2,
+			FILE_PATH2_SIZ,
+			FILE_PATH3,
+			FILE_PATH3_SIZ,
+			FILE_PATH4,
+			FILE_PATH4_SIZ,
+			FILE_PATH5,
+			FILE_PATH5_SIZ,
+			EXPIRETIME,
+			SENTDATE,
+			RSLTDATE,
+			REPORTDATE,
+			TERMINATEDDATE,
+			RSLT,
+			TYPE,
+			TELCOINFO,
+			ID,
+			COMPKEY,
+			ETC1,
+			ETC2,
+			ETC3,
+			ETC4,
+			'',
+			FVIA,
+			'',
+			SYSDATE
+		FROM 
+			DACOM_DIST.DIST_MMS_MSG
+		UNION ALL
+		SELECT
+			MSGKEY,
+			SUBJECT,
+			PHONE,
+			CALLBACK,
+			STATUS,
+			REQDATE,
+			MSG,
+			FILE_CNT,
+			FILE_CNT_REAL,
+			FILE_PATH1,
+			FILE_PATH1_SIZ,
+			FILE_PATH2,
+			FILE_PATH2_SIZ,
+			FILE_PATH3,
+			FILE_PATH3_SIZ,
+			FILE_PATH4,
+			FILE_PATH4_SIZ,
+			FILE_PATH5,
+			FILE_PATH5_SIZ,
+			EXPIRETIME,
+			SENTDATE,
+			RSLTDATE,
+			REPORTDATE,
+			TERMINATEDDATE,
+			RSLT,
+			TYPE,
+			TELCOINFO,
+			ID,
+			COMPKEY,
+			ETC1,
+			ETC2,
+			ETC3,
+			ETC4,
+			'',
+			FVIA,
+			'',
+			SYSDATE
+		FROM 
+			DACOM_DIST.DIST_MMS_BATCH)
+	WHERE 
+		(ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR ETC2 IS NULL)
+		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+				AND TO_CHAR(REQDATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+	        </if> 
+         </if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+	       <if test="searchPhoneNumber != null or searchPhoneNumber != NULL or searchNumber != ''">
+				AND PHONE = #{searchPhoneNumber}
+	   	   </if>
+	   	</if>   --> 
+<!-- 		SMS -->
+	UNION ALL
+	SELECT 
+			TRAN_PR
+		FROM
+			DACOM_DIST.DIST_LOG_${regDt}
+		WHERE
+			(TRAN_ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR TRAN_ETC2 IS NULL)
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+            <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+            AND
+            	TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+			AND
+				TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+            </if> 
+            </if> 
+            AND TRAN_RSLT = '0'
+        	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+            <if test="searchPhoneNumber != null or searchPhoneNumber != NULL or searchNumber != ''">
+ 				AND TRAN_PHONE = #{searchPhoneNumber}
+        	</if>
+        	</if>   
+		<!-- UNION ALL
+		SELECT
+			TRAN_PR
+		FROM
+			(SELECT 
+				TRAN_PR,
+				TRAN_REFKEY,
+				TRAN_ID,
+				TRAN_PHONE,
+				TRAN_CALLBACK,
+				TRAN_STATUS,
+				TRAN_DATE,
+				TRAN_RSLTDATE,
+				TRAN_REPORTDATE,
+				TRAN_RSLT,
+				TRAN_MSG,
+				TRAN_ETC1,
+				TRAN_ETC2,
+				TRAN_ETC3,
+				TRAN_ETC4,
+				TRAN_TYPE,
+				TRAN_NET,
+				TRAN_FVIA,
+				TRAN_LVIA,
+				SYSDATE,
+				SYSDATE,
+				''
+			FROM
+				DACOM_DIST.DIST_TRAN 
+			WHERE
+				TRAN_STATUS ='1'
+				OR
+				TRAN_STATUS ='2'
+			UNION ALL
+			SELECT 
+				TRAN_PR,
+				TRAN_REFKEY,
+				TRAN_ID,
+				TRAN_PHONE,
+				TRAN_CALLBACK,
+				TRAN_STATUS,
+				TRAN_DATE,
+				TRAN_RSLTDATE,
+				TRAN_REPORTDATE,
+				TRAN_RSLT,
+				TRAN_MSG,
+				TRAN_ETC1,
+				TRAN_ETC2,
+				TRAN_ETC3,
+				TRAN_ETC4,
+				TRAN_TYPE,
+				TRAN_NET,
+				TRAN_FVIA,
+				TRAN_LVIA,
+				SYSDATE,
+				SYSDATE,
+				''
+			FROM 
+				DACOM_DIST.DIST_SMS
+			WHERE
+				TRAN_STATUS = '1'
+				OR
+				TRAN_STATUS = '2'
+			UNION ALL
+			SELECT 
+				TRAN_PR,
+				TRAN_REFKEY,
+				TRAN_ID,
+				TRAN_PHONE,
+				TRAN_CALLBACK,
+				TRAN_STATUS,
+				TRAN_DATE,
+				TRAN_RSLTDATE,
+				TRAN_REPORTDATE,
+				TRAN_RSLT,
+				TRAN_MSG,
+				TRAN_ETC1,
+				TRAN_ETC2,
+				TRAN_ETC3,
+				TRAN_ETC4,
+				TRAN_TYPE,
+				TRAN_NET,
+				TRAN_FVIA,
+				TRAN_LVIA,
+				SYSDATE,
+				SYSDATE,
+				''
+			FROM 
+				DACOM_DIST.DIST_BATCH
+			WHERE
+				TRAN_STATUS = '1'
+				OR
+				TRAN_STATUS = '2'
+			)
+		WHERE 
+			(TRAN_ETC2 <![CDATA[ <> ]]> 'HIDDEN' OR TRAN_ETC2 IS NULL)
+         <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+         <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+			AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ >= ]]> #{searchStartDt}
+			AND TO_CHAR(TRAN_DATE, 'YYYYMMDD') <![CDATA[ <= ]]> #{searchEndDt}
+         </if> 
+         </if> 
+     	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+         <if test="searchPhoneNumber != null or searchNumber != ''">
+		AND TRAN_PHONE = #{searchPhoneNumber}
+     	</if>
+     	</if>    -->
+	)
+  </select>
+  
+  <select id="findAllMessage" resultType="com.ibk.msg.web.allmessage.AllMessage">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+          <include refid="ALLMESSAGE"/>                 
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  <select id="findAllMessage2" resultType="com.ibk.msg.web.allmessage.AllMessage">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+          <include refid="ALLMESSAGE2"/>                 
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+<!--   <select id="detail" resultType='com.ibk.msg.web.allmessage.AllMessage'> -->
+<!--   	SELECT -->
+  		
+<!--   </select> -->
+  
+<!-- 로그인 체크  -->
+	<select id="checkLogin" resultType="hashmap">
+		SELECT                                                           
+		    SUBSTR(CHAR_VALUE, 0, INSTR(CHAR_VALUE, '|') - 1) AS CON_ID, 
+		    SUBSTR(CHAR_VALUE, INSTR(CHAR_VALUE, '|') + 1) AS CON_PWD    
+		FROM                                                             
+		    KIUPSMS.ADMIN_SETTING                                                
+		WHERE                                                            
+		    NAME = #{param1}                                     
+	</select>
+	
+	<select id="loginCheck" resultType="hashmap">
+		SELECT                                                           
+		    *  
+		FROM                                                             
+		    DACOM_DIST.TB_CMC_MNG006M                                               
+		WHERE                                                            
+		    LOGIN_ID = #{param1}                                     
+	</select>
+	<update id="updateLoginDt">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG006M 
+        SET	
+        	LOGIN_DT = to_char(sysdate, 'YYYYMMDDHH24MISS')
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+	<update id="updateLoginFailCn">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG006M 
+        SET	
+        	LOGIN_FAIL_CN=LOGIN_FAIL_CN+1
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+    
+    <update id="unitModify">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG004D 
+        SET
+        	RSPBL_DVSN_NAME = #{rspblDvsnName}
+        	, RSPBL_PSN_NAME = #{rspblPsnName}
+        	, RSPBL_PSN_TELNO = #{rspblPsnTelno}
+		WHERE
+			BZWK_IDNFR = #{bzwkIdnfr}
+    </update>
+    
+    <select id="motpCheck" resultType="hashmap">
+		SELECT                                                           
+		    *  
+		FROM                                                             
+		    DACOM_DIST.TB_CMC_MNG007M                                               
+		WHERE                                                            
+		    LOGIN_ID = #{param1}                                     
+	</select>
+	<update id="updateMotpDt">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG007M 
+        SET	
+        	LOGIN_DT = to_char(sysdate, 'YYYYMMDDHH24MISS')
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+	<update id="updateMotpFailCn">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG007M 
+        SET	
+        	LOGIN_FAIL_CN=LOGIN_FAIL_CN+1
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>	
+    
+    
+    
+    
+<select id="crmview" resultType="java.util.Map">
+	<include refid="CRMMESSAGE"/>
+</select>    
+
+<sql id="CRMMESSAGE"> <!--  ||'(' || NVL(RSLT,'') ||')' -->
+SELECT
+	/* CRMMESSAGE */
+	MSGKEY, DECODE(MESSAGETYPE,'KAKAO','',SUBJECT) as SUBJECT, MESSAGETYPE, PHONE,
+	CALLBACK, STATUS, NVL2(RSLT,D.DSPLY_NM,'결과대기') AS RSLT,
+	TO_CHAR(REQDATE, 'YYYY-MM-DD HH24:MI:SS') AS REQDATE, MSG, FVIA, ETC1, ETC3, RSLTDATE,
+	NVL(DECODE(TELCOINFO, 'SKT','SKT','011','SKT','KTF','KT','016','KT','LGT','LG U+','019','LG U+','-'),'-') AS TELCOINFO, 
+	SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3
+FROM
+(
+	SELECT
+		MSGKEY, SUBJECT, MESSAGETYPE, PHONE,
+		CALLBACK, STATUS, RSLT, REQDATE, MSG,
+		FVIA, ETC1, ETC3, RSLTDATE, TELCOINFO, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3
+	FROM 
+	(
+		SELECT
+			MSGKEY, SUBJECT, PHONE, CALLBACK,
+			STATUS, RSLT, REQDATE, MSG, FVIA,
+			ETC1, ETC3, RSLTDATE, TELCOINFO, MESSAGETYPE, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3
+		FROM 
+		(
+			SELECT
+				MSGKEY, SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, TO_CHAR(RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS RSLTDATE, TELCOINFO,
+				CASE
+					WHEN TYPE = 3 THEN 'KAKAO'
+					WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS'
+					ELSE 'MMS'
+				END AS MESSAGETYPE, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3
+			FROM
+				DACOM_DIST.DIST_MMS_LOG_${regDt}
+			WHERE
+				MSGKEY=${msgKey}
+				<if test="telNo != ''">
+					AND PHONE = #{telNo}
+				</if>
+
+			UNION ALL
+			
+			SELECT
+				MSGKEY,  SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, MESSAGETYPE, SEQ1, SEQ2, SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3
+			FROM
+			(
+				SELECT 
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE NVL(TYPE,0) != 3
+					
+				UNION ALL
+				SELECT 
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE TYPE = 3
+
+				UNION ALL
+				SELECT
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE NVL(TYPE,0) != 3
+
+				UNION ALL
+				SELECT
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE TYPE = 3
+
+				UNION ALL
+				SELECT 
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2,
+					CASE
+						WHEN TYPE = 3 THEN 'KAKAO'
+						WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS'
+						ELSE 'MMS'
+					END AS MESSAGETYPE, TO_NUMBER(SEQ1) SEQ1, TO_NUMBER(SEQ2) SEQ2, TO_NUMBER(SEQ3) SEQ3, PERSONALINFO1, PERSONALINFO2, PERSONALINFO3
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG_IMG
+
+			)	
+			WHERE 
+				MSGKEY=${msgKey}
+				<if test="telNo != ''">
+					AND PHONE = #{telNo}
+				</if>
+		)
+	)
+<!-- SMS -->
+	UNION ALL
+		SELECT
+			TRAN_PR AS MSGKEY, '' AS SUBJECT, MESSAGETYPE, TRAN_PHONE AS PHONE,
+			TRAN_CALLBACK AS CALLBACK, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_DATE AS REQDATE, TRAN_MSG AS MSG,
+			TRAN_FVIA AS FVIA, TRAN_ETC1 AS ETC1, TRAN_ETC3 AS ETC3, TRAN_RSLTDATE AS RSLTDATE, TRAN_NET AS TELCOINFO, 0 AS SEQ1, 0 AS SEQ2, 0 AS SEQ3, '' AS PERSONALINFO1, '' AS PERSONALINFO2, '' AS PERSONALINFO3
+		FROM
+		(
+			SELECT
+				TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+				TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+				TRAN_ETC1, TRAN_ETC3, TRAN_NET, TRAN_RSLTDATE, MESSAGETYPE
+			FROM 
+			(
+				SELECT
+					TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+					TRAN_ETC1, TRAN_ETC3, TRAN_NET, TO_CHAR(TRAN_RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS TRAN_RSLTDATE,
+					CASE
+						WHEN TRAN_TYPE = 3 THEN  'KAKAO'
+						ELSE 'SMS'
+					END AS MESSAGETYPE
+				FROM
+					DACOM_DIST.DIST_LOG_${regDt}
+				WHERE
+					TRAN_PR=${msgKey}
+					<if test="telNo != ''">
+						AND TRAN_PHONE = #{telNo}
+					</if>
+				
+				UNION ALL
+				
+				SELECT 
+					TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+					TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, MESSAGETYPE
+				FROM
+				(
+					SELECT
+						TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+						TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN  'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE
+					FROM
+						DACOM_DIST.DIST_TRAN 
+					WHERE
+						TRAN_STATUS ='1'
+						OR
+						TRAN_STATUS ='2'
+
+					UNION ALL
+
+					SELECT 
+						TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+						TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN  'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE
+					FROM 
+						DACOM_DIST.DIST_SMS
+					WHERE
+						TRAN_STATUS = '1'
+						OR
+						TRAN_STATUS = '2'
+
+					UNION ALL
+
+					SELECT 
+						TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+						TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN  'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE
+					FROM 
+						DACOM_DIST.DIST_BATCH
+					WHERE
+						TRAN_STATUS = '1'
+						OR
+						TRAN_STATUS = '2'
+				) 
+				WHERE
+					TRAN_PR=${msgKey}
+					<if test="telNo != ''">
+						AND TRAN_PHONE = #{telNo}
+					</if>
+			)
+		)
+	) A,
+	(SELECT CD_VALUE, DSPLY_NM FROM DACOM_DIST.TB_CMC_MNG005C WHERE CMMN_CD = '결과구분코드') D
+WHERE
+	D.CD_VALUE (+) = A.RSLT
+</sql>
+  
+  
+<select id="crmview2" resultType="java.util.Map">
+	<include refid="CRMMESSAGE2"/>
+</select>    
+
+<sql id="CRMMESSAGE2"> <!--  ||'(' || NVL(RSLT,'') ||')' -->
+SELECT
+	/* CRMMESSAGE2 */
+	MSGKEY, DECODE(MESSAGETYPE,'KAKAO','',SUBJECT) as SUBJECT, MESSAGETYPE, PHONE,
+	CALLBACK, STATUS, NVL2(RSLT,D.DSPLY_NM,'결과대기') AS RSLT,
+	TO_CHAR(REQDATE, 'YYYY-MM-DD HH24:MI:SS') AS REQDATE, MSG, FVIA, ETC1, ETC3, RSLTDATE,
+	NVL(DECODE(TELCOINFO, 'SKT','SKT','011','SKT','KTF','KT','016','KT','LGT','LG U+','019','LG U+','-'),'-') AS TELCOINFO
+FROM
+(
+	SELECT
+		MSGKEY, SUBJECT, MESSAGETYPE, PHONE,
+		CALLBACK, STATUS, RSLT, REQDATE, MSG,
+		FVIA, ETC1, ETC3, RSLTDATE, TELCOINFO
+	FROM 
+	(
+		SELECT
+			MSGKEY, SUBJECT, PHONE, CALLBACK,
+			STATUS, RSLT, REQDATE, MSG, FVIA,
+			ETC1, ETC3, RSLTDATE, TELCOINFO, MESSAGETYPE
+		FROM 
+		(
+			SELECT
+				MSGKEY, SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, TO_CHAR(RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS RSLTDATE, TELCOINFO,
+				CASE
+					WHEN TYPE = 3 THEN 'KAKAO'
+					WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS'
+					ELSE 'MMS'
+				END AS MESSAGETYPE
+			FROM
+				DACOM_DIST.DIST_MMS_LOG_${regDt}
+			WHERE
+				MSGKEY=${msgKey}
+				<if test="telNo != ''">
+					AND PHONE = #{telNo}
+				</if>
+
+			UNION ALL
+			
+			SELECT
+				MSGKEY,  SUBJECT, PHONE, CALLBACK,
+				STATUS, RSLT, REQDATE, MSG, FVIA,
+				ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, MESSAGETYPE
+			FROM
+			(
+				SELECT 
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE NVL(TYPE,0) != 3
+					
+				UNION ALL
+				SELECT 
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG
+				WHERE TYPE = 3
+
+				UNION ALL
+				SELECT
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'LMS' AS MESSAGETYPE
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE NVL(TYPE,0) != 3
+
+				UNION ALL
+				SELECT
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2, 'KAKAO' AS MESSAGETYPE
+				FROM 
+					DACOM_DIST.DIST_MMS_BATCH
+				WHERE TYPE = 3
+
+				UNION ALL
+				SELECT 
+					MSGKEY, SUBJECT, PHONE, CALLBACK,
+					STATUS, RSLT, REQDATE, MSG, FVIA,
+					ETC1, ETC3, '' RSLTDATE, '' TELCOINFO, ETC2,
+					CASE
+						WHEN TYPE = 3 THEN 'KAKAO'
+						WHEN FILE_CNT = 0 OR FILE_CNT IS NULL THEN 'LMS'
+						ELSE 'MMS'
+					END AS MESSAGETYPE
+				FROM 
+					DACOM_DIST.DIST_MMS_MSG_IMG
+
+			)	
+			WHERE 
+				MSGKEY=${msgKey}
+				<if test="telNo != ''">
+					AND PHONE = #{telNo}
+				</if>
+		)
+	)
+<!-- SMS -->
+	UNION ALL
+		SELECT
+			TRAN_PR AS MSGKEY, '' AS SUBJECT, MESSAGETYPE, TRAN_PHONE AS PHONE,
+			TRAN_CALLBACK AS CALLBACK, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_DATE AS REQDATE, TRAN_MSG AS MSG,
+			TRAN_FVIA AS FVIA, TRAN_ETC1 AS ETC1, TRAN_ETC3 AS ETC3, TRAN_RSLTDATE AS RSLTDATE, TRAN_NET AS TELCOINFO
+		FROM
+		(
+			SELECT
+				TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+				TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+				TRAN_ETC1, TRAN_ETC3, TRAN_NET, TRAN_RSLTDATE, MESSAGETYPE
+			FROM 
+			(
+				SELECT
+					TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+					TRAN_ETC1, TRAN_ETC3, TRAN_NET, TO_CHAR(TRAN_RSLTDATE, 'YYYY-MM-DD HH24:MI:SS') AS TRAN_RSLTDATE,
+					CASE
+						WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+						ELSE 'SMS'
+					END AS MESSAGETYPE
+				FROM
+					DACOM_DIST.DIST_LOG_${regDt}
+				WHERE
+					TRAN_PR=${msgKey}
+					<if test="telNo != ''">
+						AND TRAN_PHONE = #{telNo}
+					</if>
+				
+				UNION ALL
+				
+				SELECT 
+					TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+					TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+					TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, MESSAGETYPE
+				FROM
+				(
+					SELECT
+						TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+						TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE
+					FROM
+						DACOM_DIST.DIST_TRAN 
+					WHERE
+						TRAN_STATUS ='1'
+						OR
+						TRAN_STATUS ='2'
+
+					UNION ALL
+
+					SELECT 
+						TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+						TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE
+					FROM 
+						DACOM_DIST.DIST_SMS
+					WHERE
+						TRAN_STATUS = '1'
+						OR
+						TRAN_STATUS = '2'
+
+					UNION ALL
+
+					SELECT 
+						TRAN_PR, TRAN_PHONE, TRAN_CALLBACK,
+						TRAN_STATUS, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_LVIA, TRAN_FVIA,
+						TRAN_ETC1, TRAN_ETC3, '' AS TRAN_NET, '' AS TRAN_RSLTDATE, TRAN_ETC2,
+						CASE
+							WHEN TRAN_TYPE = 3 THEN 'KAKAO'
+							ELSE 'SMS'
+						END AS MESSAGETYPE
+					FROM 
+						DACOM_DIST.DIST_BATCH
+					WHERE
+						TRAN_STATUS = '1'
+						OR
+						TRAN_STATUS = '2'
+				) 
+				WHERE
+					TRAN_PR=${msgKey}
+					<if test="telNo != ''">
+						AND TRAN_PHONE = #{telNo}
+					</if>
+			)
+		)
+	) A,
+	(SELECT CD_VALUE, DSPLY_NM FROM DACOM_DIST.TB_CMC_MNG005C WHERE CMMN_CD = '결과구분코드') D
+WHERE
+	D.CD_VALUE (+) = A.RSLT
+</sql>
+</mapper>

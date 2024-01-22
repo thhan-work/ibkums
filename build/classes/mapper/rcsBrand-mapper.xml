@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.rcsBrand.RcsBrandDao">
+	<sql id="RCS_BRAND">
+		SELECT BR_ID
+		       ,BR_NM
+		       ,BR_KEY
+		       ,AGENCY_ID
+		       ,USE_YN
+		       ,STATUS
+		       ,REG_DT
+		       ,UPDATE_DT
+		       ,APPR_CH
+		       ,APPR_REQ_YMD
+		       ,APPR_YMD
+		       ,APPR_REASON
+		       ,PROFILE_IMG_FILE_ID
+		       ,BG_IMG_FILE_ID
+		       ,BIZ_CATE_GRP
+		       ,BIZ_CATE_CD
+		       ,CATE3
+		       ,TEL
+		       ,ADDR_REGN_NO
+		       ,ADDR_MNG_NO
+		       ,ADDR_DTL
+		       ,EMAIL
+		       ,URL
+		       ,API_KEY
+		       ,DESCRIPTION
+		       ,CALLBACK_NAME
+		       ,BRAND_PROFILE_PATH
+		       ,SUBNUM_CERTIFICATE_PATH
+		       ,BRAND_BACKGROUND_PATH
+		       ,CHATBOTS
+		       ,SUB_TITLE
+		       ,BRAND_PROFILE
+		       ,BRAND_BACKGROUND
+		       ,SUBNUM_CERTIFICATE
+		       ,MENUS
+		FROM   DACOM_DIST.RCS_BRAND
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(brId)">
+				AND BR_ID = #{brId}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+	            <choose>
+	                <when test="searchWordType eq 'brNm' ">
+	                    AND BR_NM like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'subTitle' ">
+	                    AND BR_ID IN(
+		    				SELECT BR_ID 
+		    				FROM DACOM_DIST.RCS_BRAND_CHATBOT
+		    				WHERE SUB_TITLE like '%' || #{searchWord} || '%' 
+		   				)
+	                </when>
+	                <when test="searchWordType eq 'callNum' ">
+	                    AND BR_ID IN(
+		    				SELECT BR_ID 
+		    				FROM DACOM_DIST.RCS_BRAND_CHATBOT
+		    				WHERE CHATBOT_ID like '%' || #{searchWord} || '%' 
+		   				)
+	                </when>
+	            </choose>
+	        </if>
+		</where>
+		ORDER BY APPR_REQ_YMD DESC
+	</sql>
+	
+
+	<!-- RCS 브랜드 관리 조회 Count SQL -->
+	<select id="findTotalCount" resultType="java.lang.Integer">
+		/* com.ibk.msg.web.rcsBrand.RcsBrandDao.findTotalCount 브랜드 갯수 조회 */
+		SELECT COUNT(*) FROM (
+		<include refid="RCS_BRAND" />
+		)
+	</select>
+
+	<!-- RCS 브랜드 관리 조회 SQL -->
+	<select id="findRcsBrand" resultType="com.ibk.msg.web.rcsBrand.RcsBrand">
+	/* com.ibk.msg.web.rcsBrand.RcsBrandDao.findRcsBrand 브랜드 조회 */
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.header" />
+		</if>
+			<include refid="RCS_BRAND" />
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.bottom" />
+		</if>
+	</select>
+
+	<insert id="insert" parameterType="map">
+    /* com.ibk.msg.web.rcsBrand.RcsBrandDao.insert 브랜드등록 */
+     INSERT INTO DACOM_DIST.RCS_BRAND
+     ( 
+     	BR_ID                   
+		,BR_NM                  
+		,BR_KEY                 
+		,AGENCY_ID              
+		,USE_YN                 
+		,STATUS                 
+		,REG_DT                 
+		,UPDATE_DT              
+		,APPR_CH                
+		,APPR_REQ_YMD           
+		,APPR_YMD               
+		,APPR_REASON            
+		,PROFILE_IMG_FILE_ID    
+		,BG_IMG_FILE_ID         
+		,BIZ_CATE_GRP           
+		,BIZ_CATE_CD            
+		,CATE3                  
+		,TEL                    
+		,ADDR_REGN_NO           
+		,ADDR_MNG_NO            
+		,ADDR_DTL               
+		,EMAIL                  
+		,URL                    
+		,API_KEY                
+		,DESCRIPTION            
+		,CALLBACK_NAME          
+		,BRAND_PROFILE_PATH     
+		,SUBNUM_CERTIFICATE_PATH
+		,BRAND_BACKGROUND_PATH  
+		,CHATBOTS               
+		,SUB_TITLE              
+		,BRAND_PROFILE          
+		,BRAND_BACKGROUND       
+		,SUBNUM_CERTIFICATE     
+		,MENUS
+     ) VALUES (
+     	#{brId}
+		,#{brNm}
+		,#{brKey}
+		,#{agencyId}
+		,#{useYn}
+		,#{status}
+		,TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+		,#{updateDt}
+		,#{apprCh}
+		,REGEXP_REPLACE( #{apprReqYmd}, '-','')
+		,REGEXP_REPLACE( #{apprYmd}, '-','')
+		,#{apprReason}
+		,#{profileImgFileId}
+		,#{bgImgFileId}
+		,#{bizCateGrp}
+		,#{bizCateCd}
+		,#{cate3}
+		,#{tel}
+		,#{addrRegnNo}
+		,#{addrMngNo}
+		,#{addrDtl}
+		,#{email}
+		,#{url}
+		,#{apiKey}
+		,#{description}
+		,#{callbackName}
+		,#{brand_profilePath}
+		,#{subnumCertificatePath}
+		,#{brandBackgroundPath}
+		,#{chatbots}
+		,#{subTitle}
+		,#{brandProfile}
+		,#{brandBackground}
+		,#{subnumCertificate}
+		,#{menus}
+    )
+    </insert>
+    
+    <update id="update"  parameterType="map">
+    	/* com.ibk.msg.web.rcsBrand.RcsBrandDao.update 브랜드수정 */
+    	UPDATE DACOM_DIST.RCS_BRAND
+    	   SET 
+				BR_NM                     =  #{brNm}                   
+				,BR_KEY                    =  #{brKey}                  
+				,AGENCY_ID                 =  #{agencyId}               
+				,USE_YN                    =  #{useYn}                  
+				,STATUS                    =  #{status}  
+				,UPDATE_DT                 =  TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')            
+				,APPR_CH                   =  #{apprCh}                 
+				,APPR_REQ_YMD              =  REGEXP_REPLACE( #{apprReqYmd}, '-','')             
+				,APPR_YMD                  =  REGEXP_REPLACE( #{apprYmd}, '-','')                   
+				,APPR_REASON               =  #{apprReason}             
+				,PROFILE_IMG_FILE_ID       =  #{profileImgFileId}       
+				,BG_IMG_FILE_ID            =  #{bgImgFileId}            
+				,BIZ_CATE_GRP              =  #{bizCateGrp}             
+				,BIZ_CATE_CD               =  #{bizCateCd}              
+				,CATE3                     =  #{cate3}                  
+				,TEL                       =  #{tel}                    
+				,ADDR_REGN_NO              =  #{addrRegnNo}             
+				,ADDR_MNG_NO               =  #{addrMngNo}              
+				,ADDR_DTL                  =  #{addrDtl}                
+				,EMAIL                     =  #{email}                  
+				,URL                       =  #{url}                    
+				,API_KEY                   =  #{apiKey}                 
+				,DESCRIPTION               =  #{description}            
+				,CALLBACK_NAME             =  #{callbackName}           
+				,BRAND_PROFILE_PATH        =  #{brand_profilePath}      
+				,SUBNUM_CERTIFICATE_PATH   =  #{subnumCertificatePath}  
+				,BRAND_BACKGROUND_PATH     =  #{brandBackgroundPath}    
+				,CHATBOTS                  =  #{chatbots}               
+				,SUB_TITLE                 =  #{subTitle}               
+				,BRAND_PROFILE             =  #{brandProfile}           
+				,BRAND_BACKGROUND          =  #{brandBackground}        
+				,SUBNUM_CERTIFICATE        =  #{subnumCertificate}      
+				,MENUS                     =  #{menus}    
+	     WHERE BR_ID        = #{brId}
+    </update>     
+    
+    <delete id="delete" >
+    	/* com.ibk.msg.web.rcsBrand.RcsBrandDao.delete 브랜드 삭제 */
+    	DELETE 
+    	FROM DACOM_DIST.RCS_BRAND  
+    	WHERE BR_ID  = #{brId}
+    </delete>     
+    
+</mapper>

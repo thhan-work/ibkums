@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.smsUnsubscribe.SmsUnsubscribeDao">
+    <sql id="SMSUNSUBSCRIBE">
+		SELECT                                                              
+		    NUM,                                                            
+		    NVL(CUST_BSNO, ' ') AS CUST_BSNO,                               
+		    NVL(CUST_NAME, ' ') AS CUST_NAME,                               
+		    TO_CHAR(CUT_DATE, 'YYYY-MM-DD') AS CUT_DATE,                    
+		    CUT_MEMO,                                                       
+		    CUT_OPTION,                                                     
+		    SUBSTR(CUT_OPTION, 1, 1) AS CUT_OPTION_ALL,                     
+		    SUBSTR(CUT_OPTION, 2, 1) AS CUT_OPTION_AD,                      
+		    SUBSTR(CUT_OPTION, 3, 1) AS CUT_OPTION_CA,                      
+		    SUBSTR(CUT_OPTION, 4, 1) AS CUT_OPTION_YC,                      
+		    ENLISTER,                                                       
+		    NVL((                                                           
+		        SELECT EMPL_NAME                                            
+		        FROM KIUPSMS.EMPLOYEE_INFO                                          
+		        WHERE EMPL_ID = ENLISTER                                    
+		    ), ' ') AS EMPL_NAME,                                           
+		    NVL((                                                           
+		        SELECT BO_CODE                                              
+		        FROM KIUPSMS.EMPLOYEE_INFO                                          
+		        WHERE EMPL_ID = ENLISTER                                    
+		    ), ' ') AS BO_CODE,                                             
+		    CASE                                                            
+		        WHEN LENGTH(TRIM(PHONE)) = 10 THEN                          
+		            SUBSTR(PHONE, 1, 3) || '-' ||                           
+		            SUBSTR(PHONE, 4, 3) || '-' ||                           
+		            SUBSTR(PHONE, 7, 4)                                     
+		        WHEN LENGTH(TRIM(PHONE)) = 11 THEN                          
+		            SUBSTR(PHONE, 1, 3) || '-' ||                           
+		            SUBSTR(PHONE, 4, 4) || '-' ||                           
+		            SUBSTR(PHONE, 8, 4)                                     
+		        ELSE ' '                                                    
+		    END AS PHONE                                                    
+		FROM (                                                              
+		                SELECT                                              
+		                    ROWNUM as num,                                  
+		                    CUST_BSNO,                                      
+		                    CUST_NAME,                                      
+		                    CUT_DATE,                                       
+		                    CUT_MEMO,                                       
+		                    CUT_OPTION,                                     
+		                    ENLISTER,                                       
+		                    PHONE                                           
+		                FROM                                                
+		                    KIUPSMS.CUT_LIST                                        
+		                WHERE  
+		                	1=1                 
+		                	<if test="searchWord != '' ">
+				                <if test="searchWordType == 'custName'">
+				                	AND  CUST_NAME  LIKE '%' || #{searchWord} || '%'
+				                </if>
+		  		                <if test="searchWordType == 'phone'">
+		                 			AND  PHONE  LIKE '%' || #{searchWord} || '%'
+				                </if>
+		                	</if>
+
+			                <if test="searchWordType == 'cutDate'">
+			                	AND CUT_DATE BETWEEN TO_DATE(#{searchToDate} || '000000', 'yyyymmddhh24miss') AND TO_DATE(#{searchFromDate} || '235959', 'yyyymmddhh24miss')
+			                </if>
+			                
+							<if test="searchWordType == 'cutOption'">
+		                		<choose>
+		                			<when test='searchWord == "all"'>
+		                				AND   SUBSTR(CUT_OPTION, 1, 1) = '1'
+		                			</when>
+		                			<when test='searchWord == "ad"'>
+		                				AND   SUBSTR(CUT_OPTION, 2, 1) = '1'
+		                			</when>
+		                			<when test='searchWord == "ca"'>
+		                				AND   SUBSTR(CUT_OPTION, 3, 1) = '1'
+		                			</when>
+		                			<when test='searchWord == "yc"'>
+		                				AND   SUBSTR(CUT_OPTION, 4, 1) = '1'
+		                			</when>
+		                		</choose>
+							</if>
+		                ORDER BY                                            
+		                    CUT_DATE DESC                                   
+		)                                                                   
+    </sql>
+
+    <insert id="add">
+	     INSERT INTO 
+	     	KIUPSMS.CUT_LIST 
+	     (
+	         CUST_BSNO,          
+	         CUST_NAME,          
+	         CUT_DATE,           
+	         CUT_MEMO,           
+	         CUT_OPTION,         
+	         ENLISTER,           
+	         PHONE               
+	     ) VALUES (              
+	         #{custBsno},          
+	         #{custName},                       
+	         SYSDATE,            
+	         #{cutMemo},           
+	         #{cutOption},         
+	         #{enlister},           
+	         #{phone}                     
+	     )                       
+    </insert>
+    
+    <update id="modify">
+	    UPDATE                      
+	        KIUPSMS.CUT_LIST        
+	    SET                         
+	        CUST_BSNO = #{custBsno},          
+	        CUST_NAME = #{custName},          
+	        CUT_DATE = SYSDATE,     
+	        CUT_MEMO = #{cutMemo},           
+	        CUT_OPTION = #{cutOption},         
+	        ENLISTER = #{enlister}   
+	    WHERE                       
+	        PHONE = #{phone}               
+    </update>
+
+    <update id="remove">
+        DELETE 
+        	 KIUPSMS.CUT_LIST        
+	    WHERE                       
+	        PHONE = #{phone}  
+    </update>
+    
+    <select id="findTotalCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM (
+        <include refid="SMSUNSUBSCRIBE"/>
+        )
+    </select>
+
+
+    <select id="findUser" resultType="com.ibk.msg.web.smsUnsubscribe.SmsUnsubscribeInfo">
+        <include refid="PaginationMapper.header"/>
+        <include refid="SMSUNSUBSCRIBE"/>
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+
+    <select id="findDetailCount" resultType="java.lang.Integer">
+        SELECT
+        	count(*)
+        FROM 
+			KIUPSMS.CUT_LIST 
+        WHERE 
+			PHONE = #{phone}
+    </select>
+    
+    <select id="findDetail" resultType="com.ibk.msg.web.smsUnsubscribe.SmsUnsubscribeInfo">
+	    SELECT                                              
+	        CUST_BSNO,                                      
+	        CUST_NAME,                                      
+	        CUT_DATE,                                       
+	        CUT_MEMO,                                       
+	        CUT_OPTION,                                     
+	        ENLISTER,                                       
+	        PHONE     
+        FROM 
+        	KIUPSMS.CUT_LIST 
+        WHERE 
+			PHONE = #{phone}
+    </select>
+</mapper>

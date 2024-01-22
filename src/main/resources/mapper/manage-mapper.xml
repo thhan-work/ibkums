@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.manage.ManageDao">
+
+	<sql id="CodeGroup">
+		SELECT
+		    a.GROUP_CO_CD
+			, a.CMMN_CD
+			, a.VALUE_FRMT
+			, a.VALD_LNT
+			, a.INST
+			, a.USE_YN
+			, TO_CHAR(TO_DATE(a.REG_YMS, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD') REG_YMS
+			, a.REG_EMPL_ID
+		FROM DACOM_DIST.TB_CMC_MNG005M a
+
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(useYn)">
+				a.USE_YN = #{useYn}
+			</if>
+			<if test='searchWordType == "group_code" and @org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.CMMN_CD = #{searchWord}
+			</if>
+			
+			<if test='searchWordType == "group_code_name" and @org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.INST = #{searchWord}
+			</if>
+		</trim>
+
+		ORDER BY 
+			a.CMMN_CD
+
+	</sql>
+
+	<select id="findTotalCodeGroupCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="CodeGroup" />
+		)
+	</select>
+
+	<select id="findCodeGroup" resultType="com.ibk.msg.web.manage.CodeGroup">
+		<include refid="PaginationMapper.header" />
+		<include refid="CodeGroup" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	<select id="findAllCodeGroup" resultType="com.ibk.msg.web.manage.CodeGroup">
+		<include refid="CodeGroup" />
+	</select>
+	
+	<insert id="addCodeGroup">
+        INSERT INTO DACOM_DIST.TB_CMC_MNG005M
+        (
+        	GROUP_CO_CD
+			, CMMN_CD
+			, VALUE_FRMT
+			, VALD_LNT
+			, INST
+			, USE_YN
+			, REG_YMS
+			, REG_EMPL_ID
+		)
+        VALUES (
+        	#{groupCoCd}
+			, #{cmmnCd}
+			, #{valueFrmt}
+			, #{valdLnt}
+			, #{inst}
+			, #{useYn}
+			, to_char(sysdate, 'YYYYMMDDHH24MISS')
+			, #{regEmplId}        
+        )
+    </insert>
+    <update id="modifyCodeGroup">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG005M 
+        SET
+	        GROUP_CO_CD = #{groupCoCd},
+	        VALUE_FRMT = #{valueFrmt},
+	        VALD_LNT = #{valdLnt},
+	        INST = #{inst},
+	        USE_YN = #{useYn},
+	        REG_YMS = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+	        REG_EMPL_ID = #{regEmplId}
+        WHERE CMMN_CD = #{cmmnCd}
+    </update>
+
+    <update id="removeCodeGroup">
+        DELETE DACOM_DIST.TB_CMC_MNG005M WHERE CMMN_CD = #{cmmnCd}
+    </update>
+
+	<select id="findDetailCodeGroup" resultType="com.ibk.msg.web.manage.CodeGroup">
+        SELECT
+        	a.GROUP_CO_CD
+			, a.CMMN_CD
+			, a.VALUE_FRMT
+			, a.VALD_LNT
+			, a.INST
+			, a.USE_YN
+			, a.REG_YMS
+			, a.REG_EMPL_ID
+        FROM 
+        	DACOM_DIST.TB_CMC_MNG005M a
+        WHERE a.CMMN_CD = #{cmmnCd}
+    </select>
+
+    <select id="findCodeGroupCount" resultType="java.lang.Integer">
+        SELECT
+        	count(*)
+        FROM 
+        	DACOM_DIST.TB_CMC_MNG005M
+        WHERE CMMN_CD = #{cmmnCd}
+    </select>
+    
+    
+    
+    
+    <sql id="Code">
+		SELECT
+			a.GROUP_CO_CD
+			, a.CMMN_CD
+			, a.ORDR
+			, a.CD_VALUE
+			, a.DSPLY_NM
+			, a.USE_YN
+			, TO_CHAR(TO_DATE(a.REG_YMS, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD') REG_YMS
+			, a.REG_EMPL_ID
+		FROM DACOM_DIST.TB_CMC_MNG005C a
+
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(useYn)">
+				a.USE_YN = #{useYn}
+			</if>
+			<if test='@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.DSPLY_NM = #{searchWord}
+			</if>
+			
+			<if test='@org.apache.commons.lang3.StringUtils@isNotEmpty(cmmnCd)'>
+				AND a.CMMN_CD = #{cmmnCd}
+			</if>
+		</trim>
+
+		ORDER BY 
+			a.CMMN_CD
+
+	</sql>
+
+	<select id="findTotalCodeCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="Code" />
+		)
+	</select>
+
+	<select id="findCode" resultType="com.ibk.msg.web.manage.Code">
+		<include refid="PaginationMapper.header" />
+		<include refid="Code" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	<select id="findDetailCodes" resultType="com.ibk.msg.web.manage.Code">
+		SELECT
+			a.GROUP_CO_CD
+			, a.CMMN_CD
+			, a.ORDR
+			, a.CD_VALUE
+			, a.DSPLY_NM
+			, a.USE_YN
+			, TO_CHAR(TO_DATE(a.REG_YMS, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD') REG_YMS
+			, a.REG_EMPL_ID
+		FROM DACOM_DIST.TB_CMC_MNG005C a join DACOM_DIST.TB_CMC_MNG005M b on a.CMMN_CD = b.CMMN_CD and a.GROUP_CO_CD = b.GROUP_CO_CD
+
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			a.USE_YN = 'Y' and b.USE_YN='Y'
+			<if test='@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.DSPLY_NM = #{searchWord}
+			</if>
+			
+			<if test='@org.apache.commons.lang3.StringUtils@isNotEmpty(cmmnCd)'>
+				AND a.CMMN_CD = #{cmmnCd}
+			</if>
+		</trim>
+
+		ORDER BY 
+			a.CMMN_CD
+	</select>
+	
+	<insert id="addCode">
+        INSERT INTO DACOM_DIST.TB_CMC_MNG005C
+        (	
+			GROUP_CO_CD
+			, CMMN_CD
+			, ORDR
+			, CD_VALUE
+			, DSPLY_NM
+			, USE_YN
+			, REG_YMS
+			, REG_EMPL_ID
+		)
+        VALUES (
+        	#{groupCoCd}
+			, #{cmmnCd}
+			, #{ordr}
+			, #{cdValue}
+			, #{dsplyNm}
+			, #{useYn}
+			, to_char(sysdate, 'YYYYMMDDHH24MISS')
+			, #{regEmplId}        
+        )
+    </insert>
+    <update id="modifyCode">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG005C 
+        SET
+	        GROUP_CO_CD = #{groupCoCd},
+	        CMMN_CD = #{cmmnCd},
+	        ORDR = #{ordr},
+	        CD_VALUE = #{cdValue},
+	        DSPLY_NM = #{dsplyNm},
+	        USE_YN = #{useYn},
+	        REG_YMS = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+	        REG_EMPL_ID = #{regEmplId}
+        WHERE CMMN_CD = #{cmmnCd} and DSPLY_NM=#{dsplyNm}
+    </update>
+
+    <update id="removeCode">
+        DELETE DACOM_DIST.TB_CMC_MNG005C WHERE CMMN_CD = #{cmmnCd} and DSPLY_NM = #{dsplyNm}
+    </update>
+
+	<select id="findDetailCode" resultType="com.ibk.msg.web.manage.Code">
+        SELECT
+        	a.GROUP_CO_CD
+			, a.CMMN_CD
+			, a.ORDR
+			, a.CD_VALUE
+			, a.DSPLY_NM
+			, a.USE_YN
+			, TO_CHAR(TO_DATE(a.REG_YMS, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD') REG_YMS
+			, a.REG_EMPL_ID
+        FROM  DACOM_DIST.TB_CMC_MNG005C a
+        WHERE a.CMMN_CD = #{cmmnCd} and a.DSPLY_NM=#{dsplyNm}
+    </select>
+
+    <select id="findCodeCount" resultType="java.lang.Integer">
+        SELECT
+        	count(*)
+        FROM 
+        	DACOM_DIST.TB_CMC_MNG005C
+        WHERE CMMN_CD = #{cmmnCd} and DSPLY_NM=#{dsplyNm}
+    </select>
+    
+    
+    
+    
+    
+    
+    <sql id="JobCode">
+		SELECT
+		    GROUP_CO_CD
+			, BZWK_NM
+			, BZWK_IDNFR
+			, INPT_CMD_CTNT
+			, RSPBL_DVSN_NAME
+			, RSPBL_PSN_NAME
+			, RSPBL_PSN_TELNO
+			, EMPL_DVSN_NM
+			, EMPL_NAME
+			, LIVE_YN
+			, SEND_DSTIC
+			, NOTICE_OBJECT
+			, MSG_ASBL_STSIZ_CTNT
+			, VALD_FRQN_CTNT
+			, DVLM_YMS
+			, FUNC_TRI_INFO
+			, INTERFACE
+			, SERVICE_IP
+			, SERVICE_PORT
+			, SIMPLE_NOTICE
+			, TRAN_EFFE_NOTICE
+			, OUTPT_CMD_CTNT
+			, CUST_CONT_IF
+			, SYN_ASYN
+			, IF_ID
+			, TARGET_IO
+			, USER_ID
+			, SMPL_MSG_CTNT
+			, TRAN_NO_REASON
+			, DATA_SAVE_PATH
+			, SERVICE_ID
+		FROM DACOM_DIST.TB_CMC_MNG004D a
+
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+				a.SEND_DSTIC like ('%${messageType}%')
+			</if>
+			<if test='searchWordType == "system_name" and @org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.BZWK_NM = #{searchWord}
+			</if>
+			
+			<if test='searchWordType == "unit_code" and @org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.BZWK_IDNFR = #{searchWord}
+			</if>
+		</trim>
+
+		ORDER BY 
+			a.BZWK_IDNFR
+
+	</sql>
+
+	<select id="findTotalJobCodeCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="JobCode" />
+		)
+	</select>
+
+	<select id="findJobCode" resultType="com.ibk.msg.web.manage.JobCode">
+		<include refid="PaginationMapper.header" />
+		<include refid="JobCode" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	<select id="findAllJobCode" resultType="java.util.Map">
+		SELECT
+		    GROUP_CO_CD
+			, BZWK_NM
+			, BZWK_IDNFR
+			, INPT_CMD_CTNT
+			, RSPBL_DVSN_NAME
+			, RSPBL_PSN_NAME
+			, RSPBL_PSN_TELNO
+			, EMPL_DVSN_NM
+			, EMPL_NAME
+			, DECODE(LIVE_YN, 'Y', '활동', '서비스중지') LIVE_YN
+			, SEND_DSTIC
+			, NOTICE_OBJECT
+			, MSG_ASBL_STSIZ_CTNT
+			, VALD_FRQN_CTNT
+			, DVLM_YMS
+			, FUNC_TRI_INFO
+			, INTERFACE
+			, SERVICE_IP
+			, SERVICE_PORT
+			, SIMPLE_NOTICE
+			, TRAN_EFFE_NOTICE
+			, OUTPT_CMD_CTNT
+			, CUST_CONT_IF
+			, DECODE(SYN_ASYN, 'Y', '동기', '배치') SYN_ASYN
+			, IF_ID
+			, TARGET_IO
+			, USER_ID
+			, SMPL_MSG_CTNT
+			, TRAN_NO_REASON
+			, DATA_SAVE_PATH
+			, SERVICE_ID
+		FROM DACOM_DIST.TB_CMC_MNG004D a
+
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+				a.SEND_DSTIC like ('%${messageType}%')
+			</if>
+			<if test='searchWordType == "system_name" and @org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.BZWK_NM = #{searchWord}
+			</if>
+			
+			<if test='searchWordType == "unit_code" and @org.apache.commons.lang3.StringUtils@isNotEmpty(searchWord)'>
+				AND a.BZWK_IDNFR = #{searchWord}
+			</if>
+		</trim>
+
+		ORDER BY 
+			a.BZWK_IDNFR
+	</select>
+	
+	<insert id="addJobCode">
+        INSERT INTO DACOM_DIST.TB_CMC_MNG004D
+        (
+        	GROUP_CO_CD
+        	, BZWK_CHNL_CD
+        	, BZWK_GROUP_CD
+			, BZWK_NM
+			, BZWK_IDNFR
+			, INPT_CMD_CTNT
+			, RSPBL_DVSN_NAME
+			, RSPBL_PSN_NAME
+			, RSPBL_PSN_TELNO
+			, EMPL_DVSN_NM
+			, EMPL_NAME
+			, LIVE_YN
+			, SEND_DSTIC
+			, NOTICE_OBJECT
+			, MSG_ASBL_STSIZ_CTNT
+			, VALD_FRQN_CTNT
+			, DVLM_YMS
+			, FUNC_TRI_INFO
+			, INTERFACE
+			, SERVICE_IP
+			, SERVICE_PORT
+			, SIMPLE_NOTICE
+			, TRAN_EFFE_NOTICE
+			, OUTPT_CMD_CTNT
+			, CUST_CONT_IF
+			, SYN_ASYN
+			, IF_ID
+			, TARGET_IO
+			, USER_ID
+			, SMPL_MSG_CTNT
+			, TRAN_NO_REASON
+			, DATA_SAVE_PATH
+			, SERVICE_ID
+			, REG_YMS
+		)
+        VALUES (
+        	#{groupCoCd}
+        	, #{bzwkChnlCd}
+        	, #{bzwkGroupCd}        	
+			, #{bzwkNm}
+			, #{bzwkIdnfr}
+			, #{inptCmdCtnt}
+			, #{rspblDvsnName}
+			, #{rspblPsnName}
+			, #{rspblPsnTelno}
+			, #{emplDvsnNm}
+			, #{emplName}
+			, #{liveYn}
+			, #{sendDstic}
+			, #{noticeObject}
+			, #{msgAsblStsizCtnt}
+			, #{valdFrqnCtnt}
+			, #{dvlmYms}
+			, #{funcTriInfo}
+			, #{interface}
+			, #{serviceIp}
+			, #{servicePort}
+			, #{simpleNotice}
+			, #{tranEffeNotice}
+			, #{outptCmdCtnt}
+			, #{custContIf}
+			, #{synAsyn}
+			, #{ifId}
+			, #{targetIo}
+			, #{userId}
+			, #{smplMsgCtnt}
+			, #{tranNoReason}
+			, #{dataSavePath}
+			, #{serviceId}     
+			, to_char(sysdate, 'YYYYMMDDHH24MISS')
+        )
+    </insert>
+    <update id="modifyJobCode">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG004D 
+        SET
+        	GROUP_CO_CD = #{groupCoCd}
+        	, BZWK_CHNL_CD = #{bzwkChnlCd}
+        	, BZWK_GROUP_CD = #{bzwkGroupCd}
+			, BZWK_NM = #{bzwkNm}
+			, INPT_CMD_CTNT = #{inptCmdCtnt}
+			, RSPBL_DVSN_NAME = #{rspblDvsnName}
+			, RSPBL_PSN_NAME = #{rspblPsnName}
+			, RSPBL_PSN_TELNO = #{rspblPsnTelno}
+			, EMPL_DVSN_NM = #{emplDvsnNm}
+			, EMPL_NAME = #{emplName}
+			, LIVE_YN = #{liveYn}
+			, SEND_DSTIC = #{sendDstic}
+			, NOTICE_OBJECT = #{noticeObject}
+			, MSG_ASBL_STSIZ_CTNT = #{msgAsblStsizCtnt}
+			, VALD_FRQN_CTNT = #{valdFrqnCtnt}
+			, DVLM_YMS = #{dvlmYms}
+			, FUNC_TRI_INFO = #{funcTriInfo}
+			, INTERFACE = #{interface}
+			, SERVICE_IP = #{serviceIp}
+			, SERVICE_PORT = #{servicePort}
+			, SIMPLE_NOTICE = #{simpleNotice}
+			, TRAN_EFFE_NOTICE = #{tranEffeNotice}
+			, OUTPT_CMD_CTNT = #{outptCmdCtnt}
+			, CUST_CONT_IF = #{custContIf}
+			, SYN_ASYN = #{synAsyn}
+			, IF_ID = #{ifId}
+			, TARGET_IO = #{targetIo}
+			, USER_ID = #{userId}
+			, SMPL_MSG_CTNT = #{smplMsgCtnt}
+			, TRAN_NO_REASON = #{tranNoReason}
+			, DATA_SAVE_PATH = #{dataSavePath}
+			, SERVICE_ID = #{serviceId}
+			, REG_YMS = to_char(sysdate, 'YYYYMMDDHH24MISS')
+        WHERE BZWK_IDNFR = #{bzwkIdnfr}
+    </update>
+
+    <update id="removeJobCode">
+        DELETE DACOM_DIST.TB_CMC_MNG004D WHERE BZWK_IDNFR = #{bzwkIdnfr}
+    </update>
+
+	<select id="findDetailJobCode" resultType="com.ibk.msg.web.manage.JobCode">
+        SELECT
+        	GROUP_CO_CD
+			, BZWK_NM
+			, BZWK_IDNFR
+			, INPT_CMD_CTNT
+			, RSPBL_DVSN_NAME
+			, RSPBL_PSN_NAME
+			, RSPBL_PSN_TELNO
+			, EMPL_DVSN_NM
+			, EMPL_NAME
+			, LIVE_YN
+			, SEND_DSTIC
+			, NOTICE_OBJECT
+			, MSG_ASBL_STSIZ_CTNT
+			, VALD_FRQN_CTNT
+			, DVLM_YMS
+			, FUNC_TRI_INFO
+			, INTERFACE
+			, SERVICE_IP
+			, SERVICE_PORT
+			, SIMPLE_NOTICE
+			, TRAN_EFFE_NOTICE
+			, OUTPT_CMD_CTNT
+			, CUST_CONT_IF
+			, SYN_ASYN
+			, IF_ID
+			, TARGET_IO
+			, USER_ID
+			, SMPL_MSG_CTNT
+			, TRAN_NO_REASON
+			, DATA_SAVE_PATH
+			, SERVICE_ID
+        FROM 
+        	DACOM_DIST.TB_CMC_MNG004D a
+        WHERE a.BZWK_IDNFR = #{bzwkIdnfr}
+    </select>
+
+    <select id="findJobCodeCount" resultType="java.lang.Integer">
+        SELECT
+        	count(*)
+        FROM 
+        	DACOM_DIST.TB_CMC_MNG004D
+        WHERE BZWK_IDNFR = #{bzwkIdnfr}
+    </select>
+    
+    
+    
+    
+  <select id='selectSendPrice' resultType="com.ibk.msg.web.manage.Code">
+  	SELECT 
+		CD_VALUE
+		,DSPLY_NM
+	FROM 
+		DACOM_DIST.TB_CMC_MNG005C
+	WHERE 
+        GROUP_CO_CD = 'IBK'
+		AND CMMN_CD = '발송단가'
+  </select>
+    
+    
+</mapper>

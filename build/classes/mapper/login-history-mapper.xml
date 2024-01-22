@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.loginhistory.LoginHistoryDao">
+
+	<sql id="LOGHISTORY">
+		SELECT LOGIN_TYPE , EMP_NO, LOGIN_DATE, IP, LOGIN_RESULT FROM DACOM_DIST.TB_CMC_MNG008M
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(EMP_NO)">
+				AND EMP_NO =#{EMP_NO}
+			</if>
+		</where>
+		ORDER BY LOGIN_DATE DESC
+	</sql>
+
+	<select id="findLogHistoryTotalCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="LOGHISTORY" />
+		)
+	</select>
+
+	<select id="findLogHistory" resultType="hashmap">
+		<include refid="PaginationMapper.header" />
+		<include refid="LOGHISTORY" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	
+	<insert id="insertLogHistory">
+	    INSERT INTO DACOM_DIST.TB_CMC_MNG008M (LOGIN_TYPE, EMP_NO, LOGIN_DATE, IP, LOGIN_RESULT)
+		VALUES (#{LOGIN_TYPE}, #{EMP_NO}, TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'), #{IP}, #{LOGIN_RESULT})
+  	</insert>
+
+	
+</mapper>

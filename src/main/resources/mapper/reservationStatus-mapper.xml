@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.reservationStatus.ReservationStatusDao">
+
+<!-- 예약현황화면 예약 건수 조회 -->
+  <select id="selectMonthly" resultType="com.ibk.msg.web.reservationStatus.ReservationStatus">
+	SELECT
+	    DISTINCT PENGAG_YMS
+	    ,SUM(SECTION_NUMBER) OVER (PARTITION BY PENGAG_YMS) AS SECTION_NUMBER
+	FROM
+	(
+	    SELECT
+	        T30.SECTION_NUMBER
+	        ,SUBSTR(T30.PENGAG_YMS, 0, 8) AS PENGAG_YMS
+	    FROM
+	        DACOM_DIST.TB_CMC_DRF002M T21           
+	    LEFT JOIN 
+	        DACOM_DIST.TB_CMC_DRF004M T30
+	    ON
+	        T21.GROUP_UNIQ_NO = T30.GROUP_UNIQ_NO
+	    WHERE
+	    	T21.SCHEDULE_DSTIC = 'W'
+	        AND T21.PRCSS_STUS_DSTIC IN ('Y', 'S')
+	        AND T30.PENGAG_YMS LIKE #{pengagYms}||'%'
+<!-- 
+	    UNION ALL
+	        
+	    SELECT
+	        T31.REQUESTS_NUMBER AS SECTION_NUMBER
+	        ,SUBSTR(T31.SEND_PENGAG_YMS, 0, 8) AS PENGAG_YMS
+	    FROM
+	        DACOM_DIST.TB_CMC_DRF002M T21
+	    LEFT JOIN 
+	        DACOM_DIST.TB_CMC_DRF004D T31
+	    ON
+	        T21.GROUP_UNIQ_NO = T31.GROUP_UNIQ_NO
+	    WHERE
+	        T21.PRCSS_STUS_DSTIC = 'S'
+	        AND T31.SEND_PENGAG_YMS LIKE #{pengagYms}||'%'
+	        AND T31.PRCSS_STUS_DSTIC = 'Y'
+ -->
+	)
+	ORDER BY PENGAG_YMS
+  </select>
+  
+  
+<!-- 시간별 예약 내역 조회 -->
+  <select id="selectHourly" resultType="com.ibk.msg.web.reservationStatus.ReservationStatus">
+	SELECT
+	    DISTINCT PENGAG_YMS
+	    ,SUM(SECTION_NUMBER) OVER (PARTITION BY PENGAG_YMS) AS SECTION_NUMBER
+	FROM
+	(
+	    SELECT
+	        T30.SECTION_NUMBER
+	        ,SUBSTR(T30.PENGAG_YMS, 0, 12) AS PENGAG_YMS
+	    FROM
+	        DACOM_DIST.TB_CMC_DRF002M T21           
+	    LEFT JOIN 
+	        DACOM_DIST.TB_CMC_DRF004M T30
+	    ON
+	        T21.GROUP_UNIQ_NO = T30.GROUP_UNIQ_NO
+	    WHERE
+	    	T21.SCHEDULE_DSTIC = 'W'
+	        AND T21.PRCSS_STUS_DSTIC IN ('Y', 'S')
+	        AND T30.PENGAG_YMS LIKE #{pengagYms}||'%'
+<!-- 
+	    UNION ALL
+	        
+	    SELECT
+	        T31.REQUESTS_NUMBER AS SECTION_NUMBER
+	        ,SUBSTR(T31.SEND_PENGAG_YMS, 0, 12) AS PENGAG_YMS
+	    FROM
+	        DACOM_DIST.TB_CMC_DRF002M T21
+	    LEFT JOIN 
+	        DACOM_DIST.TB_CMC_DRF004D T31
+	    ON
+	        T21.GROUP_UNIQ_NO = T31.GROUP_UNIQ_NO
+	    WHERE
+	        T21.PRCSS_STUS_DSTIC = 'S'
+	        AND T31.SEND_PENGAG_YMS LIKE #{pengagYms}||'%'
+	        AND T31.PRCSS_STUS_DSTIC = 'Y'
+-->
+	)
+	ORDER BY PENGAG_YMS
+  </select>
+
+
+<!-- 예약현황화면 예약상세 SQL -->
+ <sql id="RESERVATIONSTATUS_DETAIL">
+	SELECT
+	    GROUP_NM
+	    ,SECTION_NUMBER
+	    ,TRIM(DECODE(MSG_DSTIC, 'SM', '문자-SMS', 'LM', '문자-LMS', 'MM', '문자-MMS','KM','알림톡'
+	                            ,'SR','RCS-SMS','LR','RCS-LMS','MR','RCS-MMS','TR','RCS-템플릿', MSG_DSTIC
+	         )
+	    ) AS MSG_DSTIC
+	    ,PENGAG_YMS
+	    ,EMPL_NAME
+	    ,PART_NAME
+	FROM
+	(
+	    SELECT
+	        T21.GROUP_NM
+	        ,T30.SECTION_NUMBER
+	        ,T21.MSG_DSTIC
+	        ,T30.PENGAG_YMS
+	        ,EM.EMPL_NAME
+	        ,PI.PART_NAME
+	    FROM
+	        DACOM_DIST.TB_CMC_DRF002M T21           
+	    LEFT JOIN 
+	        DACOM_DIST.TB_CMC_DRF004M T30
+	    ON
+	        T21.GROUP_UNIQ_NO = T30.GROUP_UNIQ_NO
+	    LEFT JOIN
+	        KIUPSMS.EMPLOYEE_INFO EM
+	    ON
+	        T21.SEND_EMPID = EM.EMPL_ID
+	    LEFT JOIN 
+	        KIUPSMS.PART_INFO PI
+	    ON 
+	        T21.SEND_BRNCD = PI.BO_CODE
+	    WHERE
+	    	T21.SCHEDULE_DSTIC = 'W'
+	        AND T21.PRCSS_STUS_DSTIC IN ('Y', 'S')
+	        AND T30.PENGAG_YMS LIKE #{pengagYms}||'%'
+<!-- 
+	    UNION ALL
+	        
+	    SELECT
+	        T21.GROUP_NM
+	        ,T31.REQUESTS_NUMBER AS SECTION_NUMBER
+	        ,T21.MSG_DSTIC
+	        ,T31.SEND_PENGAG_YMS AS PENGAG_YMS
+	        ,EM.EMPL_NAME
+	        ,PI.PART_NAME
+	    FROM
+	        DACOM_DIST.TB_CMC_DRF002M T21
+	    LEFT JOIN 
+	        DACOM_DIST.TB_CMC_DRF004D T31
+	    ON
+	        T21.GROUP_UNIQ_NO = T31.GROUP_UNIQ_NO
+	    LEFT JOIN
+	        KIUPSMS.EMPLOYEE_INFO EM
+	    ON
+	        T21.SEND_EMPID = EM.EMPL_ID
+	    LEFT JOIN 
+	        KIUPSMS.PART_INFO PI
+	    ON 
+	        T21.SEND_BRNCD = PI.BO_CODE
+	    WHERE
+	    	T21.SCHEDULE_DSTIC = 'W'
+	        AND T21.PRCSS_STUS_DSTIC = 'S'
+	        AND T31.SEND_PENGAG_YMS LIKE #{pengagYms}||'%'
+	        AND T31.PRCSS_STUS_DSTIC = 'Y'
+-->
+	)
+	ORDER BY PENGAG_YMS
+  </sql>
+  
+  
+<!-- 예약현황화면 예약상세 총 건수 조회 -->
+  <select id="findDetailTotalCount" resultType="java.lang.Integer">
+    SELECT COUNT(*) FROM (
+    <include refid="RESERVATIONSTATUS_DETAIL"/>
+    )
+  </select>
+  
+<!-- 예약현황화면 예약상세 조회 -->
+  <select id="findReservationStatusDetail" resultType="com.ibk.msg.web.reservationStatus.ReservationStatus">
+    <include refid="PaginationMapper.header"/>
+    <include refid="RESERVATIONSTATUS_DETAIL"/>
+    <include refid="PaginationMapper.bottom"/>
+  </select>
+
+  
+</mapper>

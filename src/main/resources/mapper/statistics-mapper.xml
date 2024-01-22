@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.statistics.StatisticsDao">
+
+	<sql id="BranchData">
+		SELECT
+		    a.GROUPVALUE1 DIST_HEADER
+		    , a.TAGT_IDNFR BRANCH_CODE
+		    , a.GROUPVALUE2 BRANCH_NAME
+		    , SUM(DECODE(a.MSG_DSTIC,'SM', a.SUCCESS_NUMBER, 0)) SMS
+		    , SUM(DECODE(a.MSG_DSTIC,'LM', a.SUCCESS_NUMBER, 0)) LMS
+		    , SUM(DECODE(a.MSG_DSTIC,'MM', a.SUCCESS_NUMBER, 0)) MMS
+		FROM DACOM_DIST.TB_CMC_MON001S a
+
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			a.STATS_DSTIC = 'BZ'
+			<if test="searchYear != null and searchMonth != null">
+				AND a.STANDARD_YMD BETWEEN '${searchYear}${searchMonth}01' AND '${searchYear}${searchMonth}31'
+			</if>
+
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(branchCode)">
+				AND a.TAGT_IDNFR like ('%${branchCode}%')
+			</if>
+			<if test='includeHead == "n"'>
+				AND a.GROUPVALUE1 <![CDATA[ <> ]]>  '본부부서'
+			</if>
+		</trim>
+			
+		GROUP BY 
+			a.GROUPVALUE1
+			, a.TAGT_IDNFR
+			, a.GROUPVALUE2
+			
+		ORDER BY 
+			a.GROUPVALUE1
+			, a.GROUPVALUE2
+
+	</sql>
+
+	<select id="findTotalBranchCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="BranchData" />
+		)
+	</select>
+
+	<select id="findBranch" resultType="com.ibk.msg.web.statistics.BranchStatisticsData">
+		<include refid="PaginationMapper.header" />
+		<include refid="BranchData" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	<select id="findBranchExcel" resultType="java.util.Map">
+		<include refid="BranchData" />
+	</select>
+	
+	
+
+	<sql id="ChannelData">
+		SELECT
+			a.MSG_DSTIC MSG_DSTIC
+		    , a.GROUPVALUE1 JOB_NAME
+		    , a.TAGT_IDNFR JOB_CODE
+		    , SUM(a.SUCCESS_NUMBER) SUCCESS_NUMBER
+		    , SUM(a.REQUESTS_NUMBER) REQUESTS_NUMBER
+		FROM DACOM_DIST.TB_CMC_MON001S a
+
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			a.STATS_DSTIC = 'CT'
+			<if test="searchYear != null and searchMonth != null">
+				AND a.STANDARD_YMD BETWEEN '${searchYear}${searchMonth}01' AND '${searchYear}${searchMonth}31'
+			</if>
+
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(jobCode)">
+				AND a.TAGT_IDNFR like('%${jobCode}%')
+			</if>
+			
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+				AND a.MSG_DSTIC = #{messageType}
+			</if>
+		</trim>
+		
+		GROUP BY 
+			a.MSG_DSTIC
+			, a.TAGT_IDNFR
+			, a.GROUPVALUE1
+			
+		ORDER BY 
+			a.MSG_DSTIC
+			, a.TAGT_IDNFR
+	</sql>
+
+	<select id="findTotalChannelCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="ChannelData" />
+		)
+	</select>
+
+	<select id="findChannel" resultType="com.ibk.msg.web.statistics.ChannelStatisticsData">
+		<include refid="PaginationMapper.header" />
+		<include refid="ChannelData" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	<select id="findChannelExcel" resultType="java.util.Map">
+		<include refid="ChannelData" />
+	</select>
+	
+	
+	
+	
+	<sql id="FailureData">
+		SELECT
+			a.MSG_DSTIC MSG_DSTIC
+		    , B.DSPLY_NM FAILURE_DESC
+		    , a.TAGT_IDNFR FAILURE_CODE
+		    , SUM(a.FAILURE_NUMBER) FAILURE_NUMBER
+		FROM 
+		DACOM_DIST.TB_CMC_MON002S a LEFT JOIN TB_CMC_MNG005C b 
+            ON a.TAGT_IDNFR = b.CD_VALUE AND B.CMMN_CD = '결과구분코드' AND B.USE_YN='Y'
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			a.STATS_DSTIC = 'FT'
+			<if test="searchYear != null and searchMonth != null">
+				AND a.STANDARD_YMD BETWEEN '${searchYear}${searchMonth}01' AND '${searchYear}${searchMonth}31'
+			</if>
+
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(failureCode)">
+				AND a.TAGT_IDNFR = #{failureCode}
+			</if>
+			
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+				AND a.MSG_DSTIC = #{messageType}
+			</if>
+			
+		</trim>
+		
+		GROUP BY 
+			a.MSG_DSTIC
+			, a.TAGT_IDNFR
+			, B.DSPLY_NM
+			
+		ORDER BY 
+			a.MSG_DSTIC
+			, a.TAGT_IDNFR
+	</sql>
+
+	<select id="findTotalFailureCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="FailureData" />
+		)
+	</select>
+
+	<select id="findFailure" resultType="com.ibk.msg.web.statistics.FailureStatisticsData">
+		<include refid="PaginationMapper.header" />
+		<include refid="FailureData" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	<select id="findFailureExcel" resultType="java.util.Map">
+		<include refid="FailureData" />
+	</select>
+	
+	
+	
+	<sql id="VendorData">
+	select * from(
+		select 
+		a.TAGT_IDNFR VENDOR
+		, a.MSG_DSTIC 
+		, a.GROUPVALUE1 TELCO_CODE
+		, SUM(a.SUCCESS_NUMBER) SUCCESS_NUMBER
+		from 
+		DACOM_DIST.TB_CMC_MON001S a
+		
+		<trim prefix="WHERE" prefixOverrides="AND |OR ">
+			a.STATS_DSTIC = 'FV'
+			<if test="searchYear != null and searchMonth != null">
+				AND a.STANDARD_YMD BETWEEN '${searchYear}${searchMonth}01' AND '${searchYear}${searchMonth}31'
+			</if>
+
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(vendor)">
+				AND a.TAGT_IDNFR = #{vendor}
+			</if>
+		</trim>
+		
+		GROUP BY 
+			a.TAGT_IDNFR
+			, a.MSG_DSTIC
+			, a.GROUPVALUE1
+
+		<if test="@org.apache.commons.lang3.StringUtils@isEmpty(vendor) || vendor == 'LG'">
+		union all
+		
+		SELECT 
+			'LG' VENDOR
+			, 'FX' MSG_DSTIC
+			, 'LGT' TELCO_CODE
+			, NVL(SUM(TO_NUMBER(page)),0) SUCCESS_NUMBER
+		FROM kiupsms.SEND_RESULT
+		WHERE SUBSTR(send_time,1,6)='${searchYear}${searchMonth}' AND error_code ='0'
+		
+		</if> 
+		) a 
+			
+		ORDER BY 
+			a.VENDOR
+			, a.MSG_DSTIC
+			, a.TELCO_CODE
+	</sql>
+
+	<select id="findTotalVendorCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="VendorData" />
+		)
+	</select>
+
+	<select id="findVendor" resultType="com.ibk.msg.web.statistics.VendorStatisticsData">
+		<include refid="VendorData" />
+	</select>
+	
+	<select id="findVendorExcel" resultType="java.util.Map">
+		<include refid="VendorData" />
+	</select>
+	
+
+
+	<select id="findSend" resultType="com.ibk.msg.web.statistics.SendData">
+	select a.*, b.UNIT_SYSTEM_ITEM_NAME
+	from (select a.LVIA,
+             DECODE(c.SUB_CODE, '1', substr(a.ID, 0, 2), substr(a.ID, 0, 5)) AS ID,
+             sum(DECODE(STATUS, 1, 1, 0))                                    AS WAIT_SEND,
+             sum(DECODE(STATUS, 4, 1, 0))                                    AS REQ_SEND,
+             sum(DECODE(STATUS, 2, 1, 0))                                    AS WAIT_REP,
+             sum(DECODE(STATUS, 3, DECODE(RSLT, 0, 1, 0), 0))                AS REP_SUCC,
+             sum(DECODE(STATUS, 3, DECODE(RSLT, 0, 0, 1), 0))                AS REP_FAIL
+      from (
+            select 'SMS 실시간' AS LVIA, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_ID AS ID from DACOM_DIST.DIST_TRAN
+            WHERE TRAN_DATE BETWEEN TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+            union all
+            select 'SMS 일반' AS LVIA, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_ID AS ID from DACOM_DIST.DIST_SMS
+            WHERE TRAN_DATE BETWEEN TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+            union all
+            select 'SMS 배치' AS LVIA, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_ID AS ID from DACOM_DIST.DIST_BATCH
+            WHERE TRAN_DATE BETWEEN TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+            union all
+            select 'MMS 실시간' AS LVIA, STATUS, RSLT, ID from DACOM_DIST.DIST_MMS_MSG
+            WHERE REQDATE BETWEEN TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+            union all
+            select 'MMS 배치' AS LVIA, STATUS, RSLT, ID from DACOM_DIST.DIST_MMS_BATCH
+            WHERE REQDATE BETWEEN TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+            union all
+            select '그룹발송' AS LVIA, a.send_stus_dstic AS STATUS, '-1' AS RSLT, b.bzwk_idnfr AS ID from DACOM_DIST.TB_CMC_DRF003D a
+                   join DACOM_DIST.TB_CMC_DRF002M b on b.BATCH_TAGT_UNIQ_NO = a.BATCH_TAGT_UNIQ_NO and b.PENGAG_YMS BETWEEN TO_CHAR(sysdate,'YYYYMMDD') || '000000' and TO_CHAR(sysdate,'YYYYMMDD') || '235959'
+            where a.send_stus_dstic = '1'
+            union all
+            select CASE
+                     WHEN TRAN_LVIA = 'dist_tran_1' OR TRAN_LVIA = 'dist_tran_2' THEN 'SMS 실시간'
+                     WHEN TRAN_LVIA = 'dist_sms_1' OR TRAN_LVIA = 'dist_sms_2' THEN 'SMS 일반'
+                     WHEN TRAN_LVIA = 'dist_batch_1' OR TRAN_LVIA = 'dist_batch_2' THEN 'SMS 배치'
+                     WHEN TRAN_LVIA = 'dist_group_1' OR TRAN_LVIA = 'dist_group_2' THEN '그룹발송'
+                     ELSE ''
+                       END AS LVIA, TRAN_STATUS AS STATUS, TRAN_RSLT AS RSLT, TRAN_ID AS ID
+            from DACOM_DIST.DIST_LOG_${yyyyMM}
+              WHERE REAL_SENDDATE BETWEEN TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+            union all
+            select CASE
+                     WHEN LVIA = 'mms_msg_1' OR LVIA = 'mms_msg_2' THEN 'MMS 실시간'
+                     WHEN LVIA = 'mms_batch_1' OR LVIA = 'mms_batch_2' THEN 'MMS 배치'
+                     WHEN LVIA = 'mms_group_1' OR LVIA = 'mms_group_2' THEN '그룹발송'
+                     ELSE ''
+                       END AS LVIA, STATUS, RSLT, ID
+            from DACOM_DIST.DIST_MMS_LOG_${yyyyMM}
+            WHERE SENTDATE BETWEEN TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate,'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+           ) a
+             join KIUPSMS.UNIT_SYSTEM b on substr(a.ID, 0, 2) = b.unit_system_code
+             join KIUPSMS.MESSAGE_UNIT c on b.UNIT_SYSTEM_CODE = c.UNIT_CODE
+
+
+      group by a.LVIA, DECODE(c.SUB_CODE, '1', substr(a.ID, 0, 2), substr(a.ID, 0, 5))) a
+      join kiupsms.unit_system_item b on a.ID = b.unit_system_item_code
+	</select>
+	
+	
+	<select id="findSendGroup" resultType="com.ibk.msg.web.statistics.SendGroupData">
+	select a.*, b.UNIT_SYSTEM_ITEM_NAME
+	from (select GROUP_NM,
+	             GROUP_UNIQ_NO,
+	             PRCSS_STUS_DSTIC,
+	             DECODE(c.SUB_CODE, '1', substr(a.ID, 0, 2), substr(a.ID, 0, 5)) AS ID,
+	             sum(DECODE(STATUS, 1, 1, 0))                                    AS WAIT_SEND,
+	             sum(DECODE(STATUS, 4, 1, 0))                                    AS REQ_SEND,
+	             sum(DECODE(STATUS, 2, 1, 0))                                    AS WAIT_REP,
+	             sum(DECODE(STATUS, 3, DECODE(RSLT, 0, 1, 0), 0))                AS REP_SUCC,
+	             sum(DECODE(STATUS, 3, DECODE(RSLT, 0, 0, 1), 0))                AS REP_FAIL
+	      from (select b.send_stus_dstic AS STATUS,
+	                   '-1'              AS RSLT,
+	                   a.bzwk_idnfr      AS ID,
+	                   a.GROUP_NM,
+	                   a.GROUP_UNIQ_NO,
+	                   a.PRCSS_STUS_DSTIC
+	            from DACOM_DIST.TB_CMC_DRF002M a
+	                   join DACOM_DIST.TB_CMC_DRF003D b on a.BATCH_TAGT_UNIQ_NO = b.BATCH_TAGT_UNIQ_NO
+	            where b.send_stus_dstic = '1'
+				and a.PENGAG_YMS BETWEEN TO_CHAR(sysdate, 'YYYYMMDD') || '000000' and TO_CHAR(sysdate, 'YYYYMMDD') || '235959'
+	               
+	            union all
+	
+	            select STATUS, RSLT, ID, a.GROUP_NM, a.GROUP_UNIQ_NO, a.PRCSS_STUS_DSTIC
+	            from DACOM_DIST.TB_CMC_DRF002M a
+	                   join DACOM_DIST.DIST_MMS_LOG_${yyyyMM} b on a.GROUP_UNIQ_NO = b.GROUPID
+	            where a.PENGAG_YMS BETWEEN TO_CHAR(sysdate, 'YYYYMMDD') || '000000' and TO_CHAR(sysdate, 'YYYYMMDD') || '235959'
+	              and b.SENTDATE BETWEEN TO_DATE(TO_CHAR(sysdate, 'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate, 'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')
+	
+	            union all
+	
+	            select TRAN_STATUS AS STATUS,
+	                   TRAN_RSLT   AS RSLT,
+	                   TRAN_ID     AS ID,
+	                   a.GROUP_NM,
+	                   a.GROUP_UNIQ_NO,
+	                   a.PRCSS_STUS_DSTIC
+	            from DACOM_DIST.TB_CMC_DRF002M a
+	                   join DACOM_DIST.DIST_LOG_${yyyyMM} b on a.GROUP_UNIQ_NO = b.TRAN_GROUPID
+	            where a.PENGAG_YMS BETWEEN TO_CHAR(sysdate, 'YYYYMMDD') || '000000' and TO_CHAR(sysdate, 'YYYYMMDD') || '235959'
+	              and b.REAL_SENDDATE BETWEEN TO_DATE(TO_CHAR(sysdate, 'YYYYMMDD') || '000000', 'YYYYMMDDHH24MISS') AND TO_DATE(TO_CHAR(sysdate, 'YYYYMMDD') || '235959', 'YYYYMMDDHH24MISS')) a
+	             join KIUPSMS.UNIT_SYSTEM b on substr(a.ID, 0, 2) = b.unit_system_code
+	             join KIUPSMS.MESSAGE_UNIT c on b.UNIT_SYSTEM_CODE = c.UNIT_CODE
+	      group by a.GROUP_NM, a.GROUP_UNIQ_NO, a.PRCSS_STUS_DSTIC,
+	               DECODE(c.SUB_CODE, '1', substr(a.ID, 0, 2), substr(a.ID, 0, 5))) a
+	       join kiupsms.unit_system_item b on a.ID = b.unit_system_item_code
+	</select>
+	
+	<update id="changeSendGroupStatus">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_DRF002M 
+        SET
+        	PRCSS_STUS_DSTIC = #{prcssStusDstic}
+        WHERE GROUP_UNIQ_NO = #{groupUniqNo}
+    </update>
+</mapper>

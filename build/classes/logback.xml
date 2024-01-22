@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+	<!-- JMX 등록 -->
+	<jmxConfigurator />	
+	<!-- 프로퍼티 설정 로딩 -->
+	<property resource="${spring.profiles.active:-local}.properties" />
+	<!-- 초기 로깅 삭제 -->
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+	<!-- 프로파일 로딩 -->
+	<include resource="logging/logback-${logger.profile:-console}.xml"/>
+	
+	<logger name="org.apache" level="INFO" />
+	
+	<logger name="javax.enterprise" level="WARN" />
+	<logger name="org.springframework" level="WARN" />
+	<logger name="javax.faces" level="INFO" />
+	
+	<logger name="org.hibernate" level="WARN" />
+	<logger name="org.primefaces" level="INFO" />
+	<logger name="ch.qos.logback" level="WARN" />
+	
+	<logger name="jdbc.sqlonly" level="OFF"/>
+	<logger name="jdbc.resultsettable" level="INFO"/>
+	<logger name="jdbc.sqltiming" level="INFO"/>
+	<logger name="jdbc.resultset" level="OFF"/>
+	<logger name="jdbc.connection" level="OFF"/>
+	<logger name="jdbc.audit" level="ERROR"/>
+
+</configuration>

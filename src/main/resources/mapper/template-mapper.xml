@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.template.TemplateDao">
+
+    <sql id="SelectData">
+	   SELECT
+			MMS_IMG_ID
+			, IMG_TYPE_CD
+			, IMG_CTGY_NM
+			, IMG_NM
+			, USE_YN
+			, IMG_SQN
+			, MMS_USER_DFNT_CON
+			, EMN
+			, DVCD
+			, TO_CHAR(RGSN_TS, 'YYYY-MM-DD HH24:MI')
+			, TO_CHAR(MDFC_TS, 'YYYY-MM-DD HH24:MI')
+		FROM 
+			DACOM_DIST.TB_IMG_TMPL
+		WHERE
+			1=1
+			<if test='searchType != ""'>		
+				AND	IMG_TYPE_CD = #{searchType}
+			</if>
+			<if test='searchUseYn != ""'>		
+				AND	USE_YN = #{searchUseYn}
+			</if>
+			<if test='searchCategory != ""'>		
+				AND	IMG_CTGY_NM LIKE '%'|| #{searchCategory} ||'%'
+			</if>
+			<if test='searchTitle != ""'>		
+				AND	IMG_NM LIKE '%'|| #{searchTitle} ||'%'
+			</if>
+		ORDER BY IMG_SQN ASC, RGSN_TS DESC
+    </sql>
+    
+    <select id="SelectAllCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="SelectData" />
+		)
+	</select>
+    
+    <select id="SelectAll" resultType="java.util.HashMap">
+		<include refid="PaginationMapper.header" />
+		<include refid="SelectData" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+
+	<insert id="tmplRegist" >
+		INSERT INTO DACOM_DIST.TB_IMG_TMPL (
+			MMS_IMG_ID, IMG_TYPE_CD, IMG_CON, IMG_CTGY_NM, IMG_NM
+			, USE_YN, IMG_SQN, MMS_USER_DFNT_CON, EMN, DVCD
+			, RGSN_TS, MDFC_TS
+		) VALUES ( 
+			DACOM_DIST.SQ_UMS_TMPLKEY.nextval, #{IMG_TYPE_CD}, #{IMG_CON}, #{IMG_CTGY_NM}, #{IMG_NM}
+			, #{USE_YN}, #{IMG_SQN}, #{MMS_USER_DFNT_CON}, #{EMN}, #{DVCD}, sysdate
+			, sysdate
+		)
+	</insert>
+		
+	<select id="selectTemplateBySeq" resultType="com.ibk.msg.web.template.TemplateDTO">
+		SELECT
+			MMS_IMG_ID
+			, IMG_TYPE_CD
+			, IMG_CON
+			, IMG_CTGY_NM
+			, IMG_NM
+			, USE_YN
+			, IMG_SQN
+			, MMS_USER_DFNT_CON
+			, EMN
+			, DVCD
+			, TO_CHAR(RGSN_TS, 'YYYY-MM-DD HH24:MI')
+			, TO_CHAR(MDFC_TS, 'YYYY-MM-DD HH24:MI')
+		FROM 
+			DACOM_DIST.TB_IMG_TMPL
+		WHERE
+			MMS_IMG_ID = #{MMS_IMG_ID}
+	</select>
+	
+	<sql id="modifyData">
+	   SELECT
+			MMS_IMG_ID
+			, IMG_TYPE_CD
+			, IMG_CTGY_NM
+			, IMG_NM
+			, USE_YN
+			, IMG_SQN
+			, MMS_USER_DFNT_CON
+			, EMN
+			, DVCD
+			, TO_CHAR(RGSN_TS, 'YYYY-MM-DD HH24:MI:SS') AS RGSN_TS
+			, TO_CHAR(MDFC_TS, 'YYYY-MM-DD HH24:MI:SS') AS MDFC_TS
+		FROM 
+			DACOM_DIST.TB_IMG_TMPL
+		WHERE
+			MMS_IMG_ID = #{MMS_IMG_ID}
+			
+    </sql>
+    
+	<select id="modifyInfo" resultType="java.util.HashMap">
+		<include refid="modifyData" />
+	</select>
+	
+	<update id="tmplModify">
+		UPDATE DACOM_DIST.TB_IMG_TMPL 
+		SET 
+			IMG_CTGY_NM = #{IMG_CTGY_NM}
+			, IMG_NM = #{IMG_NM}
+			, USE_YN = #{USE_YN}
+			, MMS_USER_DFNT_CON = #{MMS_USER_DFNT_CON}
+			, IMG_TYPE_CD = #{IMG_TYPE_CD}
+			, IMG_SQN = #{IMG_SQN}
+			, MDFC_TS = sysdate
+		WHERE
+			MMS_IMG_ID = #{MMS_IMG_ID}
+	</update>
+	
+	<sql id="SelectCategoryData">
+		SELECT
+			IMG_CTGY_NM
+		FROM 
+			DACOM_DIST.TB_IMG_TMPL
+		WHERE
+			IMG_TYPE_CD = 'B'
+			AND USE_YN = 'Y'
+		<if test='searchCategory != ""'>		
+			AND	IMG_CTGY_NM = #{searchCategory}
+		</if>
+		GROUP BY IMG_CTGY_NM
+    </sql>
+    
+	<select id="SelectCategoryCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM (
+		<include refid="SelectCategoryData" />
+		)
+	</select>
+    
+    <select id="SelectCategory" resultType="java.util.HashMap">
+		<include refid="PaginationMapper.header" />
+		<include refid="SelectCategoryData" />
+		<include refid="PaginationMapper.bottom" />
+	</select>
+	
+	<select id="downloadSelectAll" resultType="com.ibk.msg.web.template.TemplateDTO">
+		SELECT
+			MMS_IMG_ID
+			, IMG_TYPE_CD
+			, IMG_CON
+			, IMG_CTGY_NM
+			, IMG_NM
+			, USE_YN
+			, IMG_SQN
+			, MMS_USER_DFNT_CON
+			, EMN
+			, DVCD
+			, TO_CHAR(RGSN_TS, 'YYYY-MM-DD HH24:MI')
+			, TO_CHAR(MDFC_TS, 'YYYY-MM-DD HH24:MI')
+		FROM 
+			DACOM_DIST.TB_IMG_TMPL
+	</select>
+	
+</mapper>

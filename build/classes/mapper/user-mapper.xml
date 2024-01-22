@@ -1,0 +1,426 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.user.UserInfoDao">
+    <sql id="USER"> <!-- innerJoin -> leftJoin 수정, EMPL_IP IS NOT NULL 추가 -->
+        SELECT
+	        EM.EMPL_ID
+	        ,EM.USER_LEVEL
+	        ,EM.EMPL_NAME
+	        ,PA.PART_NAME
+	        ,EM.BO_CODE
+	        ,EM.EMPL_POSITION
+	        ,EM.EMPL_IP
+	        ,EM.USE_YN
+	        ,EM.ADMIN_YN
+	        ,EM.EMPL_LEVEL
+	        ,TO_CHAR(TO_DATE(REG_DT, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD') as REG_DT
+        FROM
+        	DACOM_DIST.TB_CMC_MNG001M EM
+        LEFT JOIN	
+        	KIUPSMS.PART_INFO PA
+        ON
+        	EM.BO_CODE = PA.BO_CODE
+        <where> 
+        <if test='requestType == "send"'>
+        	EM.EMPL_IP IS NOT NULL
+        	AND EM.EMPL_YN = 'Y'
+        </if>
+        <if test='requestType == "ack"'>
+        	EM.USER_LEVEL IN ('2', '3')
+        </if>
+        <if test='requestType == "admin"'>
+        	EM.EMPL_IP IS NOT NULL
+        	AND EM.ADMIN_YN = 'Y'
+        </if>
+        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+            <choose>
+                <when test="searchWordType eq 'empName' ">
+                    AND EMPL_NAME like '%'|| #{searchWord} || '%'
+                </when>
+                <when test="searchWordType eq 'emplId' ">
+                    AND EMPL_ID like '%'|| #{searchWord} || '%'
+                </when>
+                <when test="searchWordType eq 'emplIp' ">
+                    AND EMPL_IP like '%'|| #{searchWord} || '%'
+                </when>
+                <when test="searchWordType eq 'useYn' ">
+                    AND USE_YN like '%'|| #{searchWord} || '%'
+                </when>
+                <when test="searchWordType eq 'partName' ">
+                	<if test="searchWord neq '' ">
+                    	AND PART_NAME like '%'|| #{searchWord} || '%'
+                	</if>
+                </when>
+            </choose>
+        </if>
+        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchUseYn)">
+            AND USE_YN = #{searchUseYn}
+        </if>
+        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(adminYn)">
+        	AND ADMIN_YN = #{adminYn}
+        </if>
+        </where>
+        ORDER BY REG_DT DESC
+    </sql>
+	<sql id="LOGINUSER">
+		SELECT
+			*
+		FROM
+			DACOM_DIST.TB_CMC_MNG006M
+		ORDER BY REG_DT DESC
+	</sql>
+    <insert id="add">
+        INSERT INTO 
+        	DACOM_DIST.TB_CMC_MNG001M
+        (
+        	EMPL_ID
+        	, EMPL_NAME
+        	, BO_CODE
+        	, EMPL_POSITION
+        	, EMPL_IP
+        	, USE_YN
+        	, USER_LEVEL
+        	, REG_DT
+        	, REG_ID
+        	, ADMIN_YN
+        	, EMPL_YN
+        	, EMPL_LEVEL
+        )
+        VALUES 
+        (
+	        #{emplId},
+	        #{emplName},
+	        #{boCode},
+	        #{emplPosition},
+	        #{emplIp},
+	        #{useYn},
+	        #{userLevel},
+	        to_char(sysdate, 'YYYYMMDDHH24MISS'),
+	        #{regId},
+	        #{adminYn},
+	        #{emplYn},
+	        #{emplLevel}
+        )
+    </insert>
+    <insert id="addLoginUser">
+        INSERT INTO 
+        	DACOM_DIST.TB_CMC_MNG006M
+        (	
+        	  GROUP_CO_CD
+        	, EMPL_ID
+        	,EMPL_IP
+        	, EMPL_NAME
+        	, EMPL_LEVEL
+        	, BO_CODE
+        	, LOGIN_ID
+        	, PASSWD
+        	, MOBILE
+        	, USE_YN
+        	, USE_YN_CN_DT
+        	, REG_DT
+        	, REG_ID
+			, LOGIN_DT
+			, LOGIN_FAIL_CN
+			, PW_CN_DT
+			, MOD_DT
+        	, MOD_ID
+        )
+        VALUES 
+        (
+	        'IBK',
+	        #{empl_id},
+	        #{empl_ip},
+	        #{empl_name},
+	        #{empl_level},
+	        #{bo_code},
+	        #{login_id},
+	        #{passwd},
+	        #{mobile},
+	        #{use_yn},
+	        to_char(sysdate, 'YYYYMMDDHH24MISS'),
+	        to_char(sysdate, 'YYYYMMDDHH24MISS'),
+	        #{reg_id},
+	        null,
+	        '0',
+	        to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			null,
+			null
+        )
+    </insert>
+    
+    <update id="modify">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG001M 
+        SET	
+        	<if test='requestType == "sso"'>
+		        EMPL_IP = #{emplIp},
+		        USE_YN = #{useYn},
+		        EMPL_YN= #{emplYn},
+		        EMPL_LEVEL= #{emplLevel},
+		    </if>
+        	<if test='requestType == "send"'>
+		        EMPL_IP = #{emplIp},
+		        USE_YN = #{useYn},
+		        EMPL_YN= #{emplYn},
+		    </if>
+		    <if test='requestType == "ack"'>
+	        	USER_LEVEL = #{userLevel},
+	        </if>
+	        <if test='requestType == "admin"'>
+	        	EMPL_IP = #{emplIp},
+	        	ADMIN_YN = #{adminYn},
+	        </if>
+	        MOD_DT = to_char(SYSDATE, 'YYYYMMDDHH24MISS'),
+	        MOD_ID = #{modId}
+        WHERE 
+        	EMPL_ID = #{emplId}
+    </update>
+
+    <update id="modifyLoginUser">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG006M 
+        SET
+			<if test='passwd != ""'>
+				PASSWD = #{passwd},
+				PW_CN_DT =  to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			</if>	
+			EMPL_ID = #{empl_id},
+			EMPL_NAME = #{empl_name},			
+			BO_CODE = #{bo_code},
+			MOBILE = #{mobile},
+			EMPL_LEVEL = #{empl_level},
+			<if test='use_yn_cn != null and use_yn_cn == "Y"'>
+				USE_YN = #{use_yn},
+				USE_YN_CN_DT = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			</if>	
+			<if test='empl_ip != null and empl_ip != ""'>
+				EMPL_IP = #{empl_ip},
+			</if>
+			LOGIN_FAIL_CN = #{login_fail_cn},
+			MOD_DT = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			MOD_ID = #{mod_id}
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+    
+    <update id="changePasswordLoginUser">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG006M 
+        SET
+			<if test='passwd != ""'>
+				PASSWD = #{passwd},
+				PW_CN_DT =  to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			</if>			
+			MOD_DT = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			MOD_ID = #{mod_id}
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+
+    <update id="modifyLoginUserFailCn">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG006M 
+        SET	
+        	LOGIN_FAIL_CN = 0
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+
+
+
+    <update id="remove">
+        DELETE 
+        	DACOM_DIST.TB_CMC_MNG001M 
+        WHERE 
+        	USER_LEVEL = '9'
+	        AND ADMIN_YN = 'N'
+	        AND EMPL_YN = 'N'
+        	AND EMPL_ID = #{emplId}
+    </update>
+    
+    <update id="removeLoginUser">
+       DELETE 
+       	DACOM_DIST.TB_CMC_MNG006M 
+       WHERE 
+		LOGIN_ID = #{userId}
+   </update>
+    
+
+    <select id="findTotalCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM (
+        <include refid="USER"/>
+        )
+    </select>
+    <select id="findTotalLoginUserCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM (
+        <include refid="LOGINUSER"/>
+        )
+    </select>
+    <select id="findUser" resultType="com.ibk.msg.web.user.UserInfo">
+        <include refid="PaginationMapper.header"/>
+        <include refid="USER"/>
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+    
+    <select id="findLoginUser" resultType="hashmap">
+        <include refid="PaginationMapper.header"/>
+        <include refid="LOGINUSER"/>
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+
+    <select id="findDetailCount" resultType="java.lang.Integer">
+        SELECT
+        count(*)
+        FROM DACOM_DIST.TB_CMC_MNG001M
+        WHERE EMPL_ID = #{emplId}
+    </select>
+    
+    <select id="getLoginUserCount" resultType="java.lang.Integer">
+        SELECT
+        count(*)
+        FROM DACOM_DIST.TB_CMC_MNG006M
+        WHERE LOGIN_ID = #{loginId}
+    </select>
+    
+    <select id="getLoginUser" resultType="java.util.HashMap">
+        SELECT
+        *
+        FROM DACOM_DIST.TB_CMC_MNG006M
+        WHERE LOGIN_ID = #{loginId}
+    </select>
+    
+    <select id="findDetail" resultType="com.ibk.msg.web.user.UserInfo">
+        SELECT
+	        EM.EMPL_ID
+	        ,EM.USER_LEVEL
+	        ,EM.EMPL_NAME
+	        ,EM.BO_CODE
+	        ,PA.PART_NAME
+	        ,EM.EMPL_POSITION
+	        ,EM.EMPL_IP
+	        ,EM.USE_YN
+	        ,EM.EMPL_LEVEL
+        FROM 
+        	DACOM_DIST.TB_CMC_MNG001M EM,
+        	KIUPSMS.PART_INFO PA
+        WHERE 
+        	EM.BO_CODE = PA.BO_CODE(+)
+        AND	
+        	EM.EMPL_ID = #{emplId}
+    </select>
+    
+    
+    <sql id="MOTPUSER">
+		SELECT
+			*
+		FROM
+			DACOM_DIST.TB_CMC_MNG007M
+		ORDER BY REG_DT DESC
+	</sql>
+    <insert id="addMotpUser">
+        INSERT INTO 
+        	DACOM_DIST.TB_CMC_MNG007M
+        (	
+        	  GROUP_CO_CD
+        	, EMPL_ID
+        	, EMPL_IP
+        	, EMPL_NAME
+        	, EMPL_LEVEL
+        	, BO_CODE
+        	, LOGIN_ID
+        	, MOBILE
+        	, USE_YN
+        	, USE_YN_CN_DT
+        	, REG_DT
+        	, REG_ID
+			, LOGIN_DT
+			, LOGIN_FAIL_CN
+			, MOD_DT
+        	, MOD_ID
+        )
+        VALUES 
+        (
+	        'IBK',
+	        #{empl_id},
+	        #{empl_ip},
+	        #{empl_name},
+	        #{empl_level},
+	        #{bo_code},
+	        #{login_id},
+	        #{mobile},
+	        #{use_yn},
+	        to_char(sysdate, 'YYYYMMDDHH24MISS'),
+	        to_char(sysdate, 'YYYYMMDDHH24MISS'),
+	        #{reg_id},
+	        null,
+	        '0',
+			null,
+			null
+        )
+    </insert>
+    <update id="modifyMotpUser">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG007M 
+        SET
+			EMPL_ID = #{empl_id},
+			EMPL_NAME = #{empl_name},			
+			BO_CODE = #{bo_code},
+			MOBILE = #{mobile},
+			EMPL_LEVEL = #{empl_level},
+			<if test='use_yn_cn != null and use_yn_cn == "Y"'>
+				USE_YN = #{use_yn},
+				USE_YN_CN_DT = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			</if>	
+			<if test='empl_ip != null and empl_ip != ""'>
+				EMPL_IP = #{empl_ip},
+			</if>
+			LOGIN_FAIL_CN = #{login_fail_cn},
+			MOD_DT = to_char(sysdate, 'YYYYMMDDHH24MISS'),
+			MOD_ID = #{mod_id}
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+
+    <update id="modifyMotpUserFailCn">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG007M 
+        SET	
+        	LOGIN_FAIL_CN = 0
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+
+    <update id="removeMotpUser">
+       DELETE 
+       	DACOM_DIST.TB_CMC_MNG007M 
+       WHERE 
+		LOGIN_ID = #{userId}
+   </update>
+
+    <select id="findTotalMotpUserCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM (
+        <include refid="MOTPUSER"/>
+        )
+    </select>
+
+    <select id="findMotpUser" resultType="hashmap">
+        <include refid="PaginationMapper.header"/>
+        <include refid="MOTPUSER"/>
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+
+    <select id="getMotpUserCount" resultType="java.lang.Integer">
+        SELECT
+        count(*)
+        FROM DACOM_DIST.TB_CMC_MNG007M
+        WHERE LOGIN_ID = #{loginId}
+    </select>
+    
+    <select id="getMotpUser" resultType="java.util.HashMap">
+        SELECT
+        *
+        FROM DACOM_DIST.TB_CMC_MNG007M
+        WHERE LOGIN_ID = #{loginId}
+    </select>
+</mapper>

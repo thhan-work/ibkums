@@ -1,0 +1,618 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.sendstatistics.SendStatisticsDao">
+    <select id="dailyStatisticsTotalCount" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.dailyStatisticsTotalCount */
+		SELECT 
+			   totalSuccessNumber
+			 , NVL(ROUND(totalSuccessNumber/totalSendNumber*100,2), 0) AS totalSuccessPercent
+         	 , totalReSuccessNumber
+         	 , NVL(ROUND(totalReSuccessNumber/totalSendNumber*100,2), 0) AS totalReSuccessPercent
+		     , totalFailureNumber
+		     , NVL(ROUND(totalFailureNumber/totalSendNumber*100,2), 0) AS totalFailurePercent
+         	 , totalSendNumber
+		     , NVL(ROUND((totalSuccessNumber + totalReSuccessNumber) / totalSendNumber*100,2), 0) AS totalPercent
+		     , successCost
+         	 , reSuccessCost
+		FROM (
+			  SELECT 
+				  	 SUM(successNumber) AS totalSuccessNumber
+           		   , SUM(reSuccessNumber) AS totalReSuccessNumber
+		    	   , SUM(failureNumber) + SUM(reFailureNumber) AS totalFailureNumber
+		    	   , SUM(successCost) AS successCost
+          		   , SUM(reSuccessCost) AS reSuccessCost
+          		   , SUM(successNumber) + SUM(reSuccessNumber) + SUM(failureNumber) + SUM(reFailureNumber) AS totalSendNumber
+			  FROM (
+					<include refid="DailyStatisticsData" />
+			  )
+		)
+	</select>
+	
+	<select id="monthlyStatisticsTotalCount" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.monthlyStatisticsTotalCount */
+		SELECT 
+			   totalSuccessNumber
+			 , NVL(ROUND(totalSuccessNumber/totalSendNumber*100,2), 0) AS totalSuccessPercent
+         	 , totalReSuccessNumber
+         	 , NVL(ROUND(totalReSuccessNumber/totalSendNumber*100,2), 0) AS totalReSuccessPercent
+		     , totalFailureNumber
+		     , NVL(ROUND(totalFailureNumber/totalSendNumber*100,2), 0) AS totalFailurePercent
+         	 , totalSendNumber
+		     , NVL(ROUND((totalSuccessNumber + totalReSuccessNumber) / totalSendNumber*100,2), 0) AS totalPercent
+		     , successCost
+         	 , reSuccessCost
+		FROM (
+			  SELECT 
+				  	 SUM(successNumber) AS totalSuccessNumber
+           		   , SUM(reSuccessNumber) AS totalReSuccessNumber
+		    	   , SUM(failureNumber) + SUM(reFailureNumber) AS totalFailureNumber
+		    	   , SUM(successCost) AS successCost
+          		   , SUM(reSuccessCost) AS reSuccessCost
+          		   , SUM(successNumber) + SUM(reSuccessNumber) + SUM(failureNumber) + SUM(reFailureNumber) AS totalSendNumber
+			  FROM (
+					<include refid="MonthlyStatisticsData" />
+			  )
+		)
+	</select>
+	
+	<select id="totalCountGroupByMonth" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.totalCountGroupByMonth */
+		SELECT 
+			 standardYmd
+			 , monthSuccessNumber
+			 , NVL(ROUND(monthSuccessNumber/monthSendNumber*100,2), 0) AS monthSuccessPercent
+			 , monthReSuccessNumber
+			 , NVL(ROUND(monthReSuccessNumber/monthSendNumber*100,2), 0) AS monthReSuccessPercent
+			 , monthFailureNumber
+			 , NVL(ROUND(monthFailureNumber/monthSendNumber*100,2), 0) AS monthFailurePercent
+			 , monthSendNumber
+			 , NVL(ROUND((monthSuccessNumber + monthReSuccessNumber) / monthSendNumber*100,2), 0) AS monthPercent
+			 , successCost
+			 , reSuccessCost
+		FROM (
+			  SELECT 
+				   standardYmd
+				   , SUM(successNumber) AS monthSuccessNumber
+	               , SUM(reSuccessNumber) AS monthReSuccessNumber
+	               , SUM(failureNumber) + SUM(reFailureNumber) AS monthFailureNumber
+	               , SUM(successNumber) + SUM(reSuccessNumber) + SUM(failureNumber) + SUM(reFailureNumber) AS monthSendNumber
+	               , SUM(successCost) AS successCost
+	               , SUM(reSuccessCost) AS reSuccessCost
+			  FROM (
+					<include refid="MonthlyStatisticsData" />
+			  )
+        	  GROUP BY standardYmd
+        	  ORDER BY standardYmd
+  		)
+	</select>
+	
+	<select id="totalCountGroupByDepartment" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.totalCountGroupByDepartment */
+		SELECT 
+			 standardYmd
+			 , departmentSuccessNumber
+			 , NVL(ROUND(departmentSuccessNumber/departmentSendNumber*100,2), 0) AS departmentSuccessPercent
+			 , departmentReSuccessNumber
+			 , NVL(ROUND(departmentReSuccessNumber/departmentSendNumber*100,2), 0) AS departmentReSuccessPercent
+			 , departmentFailureNumber
+			 , NVL(ROUND(departmentFailureNumber/departmentSendNumber*100,2), 0) AS departmentFailurePercent
+			 , departmentSendNumber
+			 , NVL(ROUND((departmentSuccessNumber + departmentReSuccessNumber) / departmentSendNumber*100,2), 0) AS departmentPercent
+			 , successCost
+			 , reSuccessCost
+			 , groupValue2
+		FROM (
+			  SELECT 
+				  	 standardYmd
+				   , SUM(successNumber) AS departmentSuccessNumber
+				   , SUM(reSuccessNumber) AS departmentReSuccessNumber
+				   , SUM(failureNumber) + SUM(reFailureNumber) AS departmentFailureNumber
+	               , SUM(successNumber) + SUM(reSuccessNumber) + SUM(failureNumber) + SUM(reFailureNumber) AS departmentSendNumber
+	               , groupValue2
+	               , SUM(successCost) AS successCost
+	               , SUM(reSuccessCost) AS reSuccessCost
+			  FROM (
+					<include refid="DepartmentStatisticsData" />
+			  )
+        	  GROUP BY standardYmd, groupValue2
+        	  ORDER BY standardYmd
+  		)
+	</select>
+	
+	<select id="departmentStatisticsTotalCount" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.departmentStatisticsTotalCount */
+		SELECT 
+			   totalSuccessNumber
+			 , NVL(ROUND(totalSuccessNumber/totalSendNumber*100,2), 0) AS totalSuccessPercent
+         	 , totalReSuccessNumber
+         	 , NVL(ROUND(totalReSuccessNumber/totalSendNumber*100,2), 0) AS totalReSuccessPercent
+		     , totalFailureNumber
+		     , NVL(ROUND(totalFailureNumber/totalSendNumber*100,2), 0) AS totalFailurePercent
+         	 , totalSendNumber
+		     , NVL(ROUND((totalSuccessNumber + totalReSuccessNumber) / totalSendNumber*100,2), 0) AS totalPercent
+		     , successCost
+         	 , reSuccessCost
+		FROM (
+			  SELECT 
+				  	 SUM(successNumber) AS totalSuccessNumber
+           		   , SUM(reSuccessNumber) AS totalReSuccessNumber
+		    	   , SUM(failureNumber) + SUM(reFailureNumber) AS totalFailureNumber
+		    	   , SUM(successCost) AS successCost
+          		   , SUM(reSuccessCost) AS reSuccessCost
+          		   , SUM(successNumber) + SUM(reSuccessNumber) + SUM(failureNumber) + SUM(reFailureNumber) AS totalSendNumber
+			  FROM (
+					<include refid="DepartmentStatisticsData" />
+			  )
+		)
+	</select>
+	
+	<select id="dailyStatisticsList" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.dailyStatisticsList */
+		<include refid="DailyStatisticsData" />
+	</select>
+	
+	<select id="monthlyStatisticsList" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.monthlyStatisticsList */
+		<include refid="MonthlyStatisticsData" />
+	</select>
+	
+	<select id="departmentStatisticsList" resultType="com.ibk.msg.web.sendstatistics.StatisticsData">
+		/* com.ibk.msg.web.sendstatistics.SendStatisticsDao.departmentStatisticsList */
+		<include refid="DepartmentStatisticsData" />
+	</select>
+	
+	<sql id="DailyStatisticsData">
+		SELECT
+	  	  	 t3.STANDARD_YMD AS standardYmd
+			 , t3.MSG_DSTIC AS msgDstic
+			 , SUM(t3.MARKETING_CNT) AS marketingCnt
+			 , SUM(t3.NO_MARKETING_CNT) AS noMarketingCnt
+			 , SUM(t3.TOTAL_SEND_NUMBER) AS totalSendNumber
+      		 , DECODE(SUM(t3.TOTAL_SEND_NUMBER), 0, 0, null, 0, 
+      		 		NVL(ROUND((SUM(t3.SUCCESS_NUMBER) + SUM(t3.RE_SUCCESS_NUMBER)) / SUM(t3.TOTAL_SEND_NUMBER) * 100, 2), 0)) AS totalSuccessPercent
+      		 , SUM(t3.SUCCESS_NUMBER) AS successNumber
+			 , SUM(t3.FAILURE_NUMBER) AS failureNumber
+      		 , DECODE(SUM(t3.SEND_NUMBER), 0, 0, null, 0, 
+      		 		NVL(ROUND(SUM(t3.SUCCESS_NUMBER) / SUM(t3.SEND_NUMBER) * 100, 2), 0)) AS successPercent
+      		 , SUM(t3.RE_SUCCESS_NUMBER) AS reSuccessNumber
+			 , SUM(t3.RE_FAILURE_NUMBER) AS reFailureNumber
+      		 , DECODE(SUM(t3.RE_SEND_NUMBER), 0, 0, null, 0, 
+      		 		NVL(ROUND(SUM(t3.RE_SUCCESS_NUMBER) / SUM(t3.RE_SEND_NUMBER) * 100, 2), 0)) AS reSuccessPercent
+      		 , DECODE(SUM(t3.SUCCESS_COST), 0, 0, null, 0, SUM(t3.SUCCESS_COST)) AS successCost
+      		 , DECODE(SUM(t3.RE_SUCCESS_COST), 0, 0, null, 0, SUM(t3.RE_SUCCESS_COST)) AS reSuccessCost
+      		 , SUM(t3.SEND_NUMBER) AS sendNumber
+           	 , SUM(t3.RE_SEND_NUMBER) AS reSendNumber
+		  FROM (
+		  		SELECT 
+	  				 t1.STANDARD_YMD
+					 , DECODE(t1.SEND_TYPE, 'marketing', COUNT(t1.SEND_TYPE), 0) AS MARKETING_CNT
+					 , DECODE(t1.SEND_TYPE, 'noMarketing', COUNT(t1.SEND_TYPE), 0) AS NO_MARKETING_CNT
+      				 , SUM(t1.SUCCESS_NUMBER) AS SUCCESS_NUMBER
+					 , SUM(t1.FAILURE_NUMBER) AS FAILURE_NUMBER
+      				 , DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER))  AS RE_SUCCESS_NUMBER
+					 , DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER))  AS RE_FAILURE_NUMBER
+      				 , SUM(t1.SUCCESS_NUMBER) + SUM(t1.FAILURE_NUMBER) 
+      						+ DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER)) + DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER)) AS TOTAL_SEND_NUMBER
+      				 , SUM(t1.SUCCESS_NUMBER) + SUM(t1.FAILURE_NUMBER) AS SEND_NUMBER
+      				 , DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER)) + DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER)) AS RE_SEND_NUMBER
+					 , t1.MSG_DSTIC      
+      				 , SUM(t1.SUCCESS_COST) AS SUCCESS_COST
+      				 , SUM(t2.RE_SUCCESS_COST) AS RE_SUCCESS_COST
+  				  FROM (
+  						SELECT 
+        		  			 STANDARD_YMD
+              				 , GROUP_UNIQ_NO
+              				 , SUCCESS_NUMBER
+		       				 , FAILURE_NUMBER
+              				 , MSG_DSTIC 
+              				 , SEND_TYPE
+              				 , SUCCESS_NUMBER * MSG_COST AS SUCCESS_COST
+       					  FROM (
+        						SELECT 
+          		  	 				 t47.STANDARD_YMD
+                 					 , t47.GROUP_UNIQ_NO
+                 					 , t47.SUCCESS_NUMBER
+					       			 , t47.FAILURE_NUMBER
+               						 , t47.MSG_DSTIC
+                 					 , DECODE(t47.MSG_DSTIC, 'SM', 8.8, 'LM', 26.6, 'MM', 55, 'KM',10, 'SR',10,'LR',10,'MR',10, 0) MSG_COST
+                 					 , t22.SEND_TYPE
+			      				  FROM DACOM_DIST.TB_STATISTICS t47
+            				 LEFT JOIN DACOM_DIST.TB_CMC_DRF002D t22 ON t22.GROUP_UNIQ_NO = t47.GROUP_UNIQ_NO
+            				 LEFT JOIN DACOM_DIST.TB_CMC_DRF002M t21 ON t21.GROUP_UNIQ_NO = t47.GROUP_UNIQ_NO
+                     		 LEFT JOIN KIUPSMS.EMPLOYEE_INFO EMP ON t21.REG_EMP_NO = EMP.EMPL_ID
+                     		 LEFT JOIN KIUPSMS.PART_INFO PART ON EMP.BO_CODE = PART.BO_CODE 
+			     			   <where> 
+			     				 	   t47.ALT_MSG_YN = 'N'	 
+									   <!-- STATS_DSTIC = 'BZ' -->
+									   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+										   AND t47.STANDARD_YMD BETWEEN #{searchStartDt} AND #{searchEndDt}
+									   </if>
+									   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+										   <if test="messageType !='all'">
+												<choose>
+													<when test="messageType == 'message'">
+														<if test="messageTypeDetail == 'SM'">
+															AND t47.msg_dstic = 'SM'
+														</if>
+														<if test="messageTypeDetail == 'LM'">
+															AND t47.msg_dstic = 'LM'
+														</if>
+														<if test="messageTypeDetail == 'MM'">
+															AND t47.msg_dstic = 'MM'
+														</if>
+														<if test="messageTypeDetail == 'all'">
+															AND t47.msg_dstic IN ('SM', 'LM', 'MM')
+														</if>
+													</when>
+													<when test="messageType == 'kakao'">
+														AND t47.msg_dstic = 'KM'
+													</when>
+													<when test="messageType == 'rcs'">
+														<if test="messageTypeDetail == 'SR'">
+															AND t47.msg_dstic = 'SR'
+														</if>
+														<if test="messageTypeDetail == 'LR'">
+															AND t47.msg_dstic = 'LR'
+														</if>
+														<if test="messageTypeDetail == 'MR'">
+															AND t47.msg_dstic = 'MR'
+														</if>
+														<if test="messageTypeDetail == 'DT'">
+															AND t47.msg_dstic = 'DT'
+														</if>
+														<if test="messageTypeDetail == 'FT'">
+															AND t47.msg_dstic = 'FT'
+														</if>
+														<if test="messageTypeDetail == 'all'">
+															AND t47.msg_dstic IN ('SR', 'LR', 'MR', 'DT', 'FT')
+														</if>
+													</when>
+												</choose>
+										   </if>
+									   </if>
+									   <if test="partNm != null and partNm !=''">
+										   AND t47.GROUPVALUE2 LIKE '%' || #{partNm} || '%'
+									   </if>
+									   <if test="regNm != null and regNm !=''">
+										   AND EMP.EMPL_NAME LIKE '%' || #{regNm} || '%'
+									   </if>
+									   <if test="sendType !=  'all'">
+										   AND t22.SEND_TYPE = #{sendType}
+									   </if>
+							   </where>
+			     		  )
+				  ) t1
+			 LEFT JOIN (
+		      			SELECT
+          		    		   GROUP_UNIQ_NO
+          					 , SUCCESS_NUMBER AS RE_SUCCESS_NUMBER
+							 , FAILURE_NUMBER AS RE_FAILURE_NUMBER
+                			 , RE_MSG_COST
+                			 , SUCCESS_NUMBER * RE_MSG_COST AS RE_SUCCESS_COST
+          				  FROM (
+          				  		SELECT 
+		      		   				   GROUP_UNIQ_NO
+		           					 , SUCCESS_NUMBER
+							 		 , FAILURE_NUMBER
+		           					 , DECODE(MSG_DSTIC, 'SM', 8.8, 'LM', 26.6, 'MM', 55, 'KM', 10, 
+		               		  		 		'SR',10,'LR',10,'MR',10, 0) RE_MSG_COST
+								  FROM DACOM_DIST.TB_STATISTICS
+								 WHERE 
+			  		  				 ALT_MSG_YN = 'Y'
+			  		  	  )
+			 ) t2 ON t1.GROUP_UNIQ_NO = t2.GROUP_UNIQ_NO
+			 GROUP BY
+					t1.STANDARD_YMD, t1.MSG_DSTIC, t1.SEND_TYPE
+		  ) t3
+		  WHERE 
+		  	  t3.SEND_NUMBER > 0
+	   GROUP BY
+			  t3.STANDARD_YMD, t3.MSG_DSTIC
+	   ORDER BY 
+	   		  t3.STANDARD_YMD
+	</sql>
+	
+	<sql id="MonthlyStatisticsData">
+		SELECT
+	  	  	 t3.STANDARD_YMD AS standardYmd
+			 , t3.MSG_DSTIC AS msgDstic
+			 , SUM(t3.MARKETING_CNT) AS marketingCnt
+			 , SUM(t3.NO_MARKETING_CNT) AS noMarketingCnt
+			 , SUM(t3.TOTAL_SEND_NUMBER) AS totalSendNumber
+      		 , DECODE(SUM(t3.TOTAL_SEND_NUMBER), 0, 0, null, 0, 
+      		 		NVL(ROUND((SUM(t3.SUCCESS_NUMBER) + SUM(t3.RE_SUCCESS_NUMBER)) / SUM(t3.TOTAL_SEND_NUMBER) * 100, 2), 0)) AS totalSuccessPercent
+      		 , SUM(t3.SUCCESS_NUMBER) AS successNumber
+			 , SUM(t3.FAILURE_NUMBER) AS failureNumber
+      		 , DECODE(SUM(t3.SEND_NUMBER), 0, 0, null, 0, 
+      		 		NVL(ROUND(SUM(t3.SUCCESS_NUMBER) / SUM(t3.SEND_NUMBER) * 100, 2), 0)) AS successPercent
+      		 , SUM(t3.RE_SUCCESS_NUMBER) AS reSuccessNumber
+			 , SUM(t3.RE_FAILURE_NUMBER) AS reFailureNumber
+      		 , DECODE(SUM(t3.RE_SEND_NUMBER), 0, 0, null, 0, 
+      		 		NVL(ROUND(SUM(t3.RE_SUCCESS_NUMBER) / SUM(t3.RE_SEND_NUMBER) * 100, 2), 0)) AS reSuccessPercent
+      		 , DECODE(SUM(t3.SUCCESS_COST), 0, 0, null, 0, SUM(t3.SUCCESS_COST)) AS successCost
+      		 , DECODE(SUM(t3.RE_SUCCESS_COST), 0, 0, null, 0, SUM(t3.RE_SUCCESS_COST)) AS reSuccessCost
+      		 , SUM(t3.SEND_NUMBER) AS sendNumber
+           	 , SUM(t3.RE_SEND_NUMBER) AS reSendNumber
+		  FROM (
+		  		SELECT 
+	  				 t1.STANDARD_YMD
+					 , DECODE(t1.SEND_TYPE, 'marketing', COUNT(t1.SEND_TYPE), 0) AS MARKETING_CNT
+					 , DECODE(t1.SEND_TYPE, 'noMarketing', COUNT(t1.SEND_TYPE), 0) AS NO_MARKETING_CNT
+      				 , SUM(t1.SUCCESS_NUMBER) AS SUCCESS_NUMBER
+					 , SUM(t1.FAILURE_NUMBER) AS FAILURE_NUMBER
+      				 , DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER))  AS RE_SUCCESS_NUMBER
+					 , DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER))  AS RE_FAILURE_NUMBER
+      				 , SUM(t1.SUCCESS_NUMBER) + SUM(t1.FAILURE_NUMBER) 
+      						+ DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER)) + DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER)) AS TOTAL_SEND_NUMBER
+      				 , SUM(t1.SUCCESS_NUMBER) + SUM(t1.FAILURE_NUMBER) AS SEND_NUMBER
+      				 , DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER)) + DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER)) AS RE_SEND_NUMBER
+					 , t1.MSG_DSTIC      
+      				 , SUM(t1.SUCCESS_COST) AS SUCCESS_COST
+      				 , SUM(t2.RE_SUCCESS_COST) AS RE_SUCCESS_COST
+  				  FROM (
+  						SELECT 
+        		  			 STANDARD_YMD
+              				 , GROUP_UNIQ_NO
+              				 , SUCCESS_NUMBER
+		       				 , FAILURE_NUMBER
+              				 , MSG_DSTIC 
+              				 , SEND_TYPE
+              				 , SUCCESS_NUMBER * MSG_COST AS SUCCESS_COST
+       					  FROM (
+        						SELECT 
+          		  	 				 SUBSTR(t47.STANDARD_YMD,0,6) AS STANDARD_YMD
+                 					 , t47.GROUP_UNIQ_NO
+                 					 , t47.SUCCESS_NUMBER
+					       			 , t47.FAILURE_NUMBER
+               						 , t47.MSG_DSTIC
+                 					 , DECODE(t47.MSG_DSTIC, 'SM', 8.8, 'LM', 26.6, 'MM', 55, 'KM',10, 'SR',10,'LR',10,'MR',10, 0) MSG_COST
+                 					 , t22.SEND_TYPE
+			      				  FROM DACOM_DIST.TB_STATISTICS t47
+            				 LEFT JOIN DACOM_DIST.TB_CMC_DRF002D t22 ON t22.GROUP_UNIQ_NO = t47.GROUP_UNIQ_NO
+            				 LEFT JOIN DACOM_DIST.TB_CMC_DRF002M t21 ON t21.GROUP_UNIQ_NO = t47.GROUP_UNIQ_NO
+                     		 LEFT JOIN KIUPSMS.EMPLOYEE_INFO EMP ON t21.REG_EMP_NO = EMP.EMPL_ID
+                     		 LEFT JOIN KIUPSMS.PART_INFO PART ON EMP.BO_CODE = PART.BO_CODE
+			     			   <where> 
+			     				 	   t47.ALT_MSG_YN = 'N'	 
+									   <!-- STATS_DSTIC = 'BZ' -->
+									   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+										   AND t47.STANDARD_YMD BETWEEN #{searchStartDt} AND #{searchEndDt}
+									   </if>
+									   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+										   <if test="messageType !='all'">
+												<choose>
+													<when test="messageType == 'message'">
+														<if test="messageTypeDetail == 'SM'">
+															AND t47.msg_dstic = 'SM'
+														</if>
+														<if test="messageTypeDetail == 'LM'">
+															AND t47.msg_dstic = 'LM'
+														</if>
+														<if test="messageTypeDetail == 'MM'">
+															AND t47.msg_dstic = 'MM'
+														</if>
+														<if test="messageTypeDetail == 'all'">
+															AND t47.msg_dstic IN ('SM', 'LM', 'MM')
+														</if>
+													</when>
+													<when test="messageType == 'kakao'">
+														AND t47.msg_dstic = 'KM'
+													</when>
+													<when test="messageType == 'rcs'">
+														<if test="messageTypeDetail == 'SR'">
+															AND t47.msg_dstic = 'SR'
+														</if>
+														<if test="messageTypeDetail == 'LR'">
+															AND t47.msg_dstic = 'LR'
+														</if>
+														<if test="messageTypeDetail == 'MR'">
+															AND t47.msg_dstic = 'MR'
+														</if>
+														<if test="messageTypeDetail == 'DT'">
+															AND t47.msg_dstic = 'DT'
+														</if>
+														<if test="messageTypeDetail == 'FT'">
+															AND t47.msg_dstic = 'FT'
+														</if>
+														<if test="messageTypeDetail == 'all'">
+															AND t47.msg_dstic IN ('SR', 'LR', 'MR', 'DT', 'FT')
+														</if>
+													</when>
+												</choose>
+										   </if>
+									   </if>
+									   <if test="partNm != null and partNm !=''">
+										   AND t47.GROUPVALUE2 LIKE '%' || #{partNm} || '%'
+									   </if>
+									   <if test="regNm != null and regNm !=''">
+										   AND EMP.EMPL_NAME LIKE '%' || #{regNm} || '%'
+									   </if>
+									   <if test="sendType !=  'all'">
+										   AND t22.SEND_TYPE = #{sendType}
+									   </if>
+							   </where>
+			     		  )
+				  ) t1
+			 LEFT JOIN (
+		      			SELECT
+          		    		   GROUP_UNIQ_NO
+          					 , SUCCESS_NUMBER AS RE_SUCCESS_NUMBER
+							 , FAILURE_NUMBER AS RE_FAILURE_NUMBER
+                			 , RE_MSG_COST
+                			 , SUCCESS_NUMBER * RE_MSG_COST AS RE_SUCCESS_COST
+          				  FROM (
+          				  		SELECT 
+		      		   				   GROUP_UNIQ_NO
+		           					 , SUCCESS_NUMBER
+							 		 , FAILURE_NUMBER
+		           					 , DECODE(MSG_DSTIC, 'SM', 8.8, 'LM', 26.6, 'MM', 55, 'KM', 10, 
+		               		  		 		'SR',10,'LR',10,'MR',10, 0) RE_MSG_COST
+								  FROM DACOM_DIST.TB_STATISTICS
+								 WHERE 
+			  		  				 ALT_MSG_YN = 'Y'
+			  		  	  )
+			 ) t2 ON t1.GROUP_UNIQ_NO = t2.GROUP_UNIQ_NO
+			 GROUP BY
+					t1.STANDARD_YMD, t1.MSG_DSTIC, t1.SEND_TYPE
+		  ) t3
+		  WHERE 
+		  	  t3.SEND_NUMBER > 0
+	   GROUP BY
+			  t3.STANDARD_YMD, t3.MSG_DSTIC
+	   ORDER BY 
+	   		  t3.STANDARD_YMD
+	</sql>
+	
+	<sql id="DepartmentStatisticsData">
+		SELECT
+	  		 t3.STANDARD_YMD AS standardYmd
+			 , t3.MSG_DSTIC AS msgDstic
+			 , t3.MARKETING_CNT AS marketingCnt
+			 , t3.NO_MARKETING_CNT AS noMarketingCnt
+			 , t3.TOTAL_SEND_NUMBER AS totalSendNumber
+       		 , NVL(ROUND((t3.SUCCESS_NUMBER + t3.RE_SUCCESS_NUMBER) / t3.TOTAL_SEND_NUMBER * 100, 2), 0) AS totalSuccessPercent
+       		 , t3.SUCCESS_NUMBER AS successNumber
+			 , t3.FAILURE_NUMBER AS failureNumber
+       		 , DECODE(t3.SEND_NUMBER, 0, 0, null, 0, 
+      		 		NVL(ROUND(t3.SUCCESS_NUMBER / t3.SEND_NUMBER * 100, 2), 0)) AS successPercent
+       		 , t3.RE_SUCCESS_NUMBER AS reSuccessNumber
+			 , t3.RE_FAILURE_NUMBER AS reFailureNumber
+       		 , DECODE(t3.RE_SEND_NUMBER, 0, 0, null, 0, 
+      		 		NVL(ROUND(t3.RE_SUCCESS_NUMBER / t3.RE_SEND_NUMBER * 100, 2), 0)) AS reSuccessPercent
+	         , DECODE(t3.SUCCESS_COST, 0, 0, null, 0, t3.SUCCESS_COST) AS successCost
+	         , DECODE(t3.RE_SUCCESS_COST, 0, 0, null, 0, t3.RE_SUCCESS_COST) AS reSuccessCost
+	         , t3.SEND_NUMBER AS sendNumber
+	         , t3.RE_SEND_NUMBER AS reSendNumber
+	         , t3.GROUPVALUE2 as groupValue2
+		  FROM (
+		  		SELECT 
+	  				 t1.STANDARD_YMD
+           			 , t1.GROUPVALUE2
+           			 , t1.MSG_DSTIC      
+					 , DECODE(t1.SEND_TYPE, 'marketing', COUNT(t1.SEND_TYPE), 0) AS MARKETING_CNT
+					 , DECODE(t1.SEND_TYPE, 'noMarketing', COUNT(t1.SEND_TYPE), 0) AS NO_MARKETING_CNT
+      				 , SUM(t1.SUCCESS_NUMBER) AS SUCCESS_NUMBER
+					 , SUM(t1.FAILURE_NUMBER) AS FAILURE_NUMBER
+      				 , DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER))  AS RE_SUCCESS_NUMBER
+					 , DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER))  AS RE_FAILURE_NUMBER
+      				 , SUM(t1.SUCCESS_NUMBER) + SUM(t1.FAILURE_NUMBER) 
+      						+ DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER)) + DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER)) AS TOTAL_SEND_NUMBER
+      				 , SUM(t1.SUCCESS_NUMBER) + SUM(t1.FAILURE_NUMBER) AS SEND_NUMBER
+      				 , DECODE(SUM(t2.RE_SUCCESS_NUMBER), 0, 0, null, 0, SUM(t2.RE_SUCCESS_NUMBER)) + DECODE(SUM(t2.RE_FAILURE_NUMBER), 0, 0, null, 0, SUM(t2.RE_FAILURE_NUMBER)) AS RE_SEND_NUMBER
+      				 , SUM(t1.SUCCESS_COST) AS SUCCESS_COST
+      				 , SUM(t2.RE_SUCCESS_COST) AS RE_SUCCESS_COST
+  				  FROM (
+  						SELECT 
+        		  			 STANDARD_YMD
+              				 , GROUP_UNIQ_NO
+              				 , SUCCESS_NUMBER
+		       				 , FAILURE_NUMBER
+              				 , MSG_DSTIC 
+              				 , SEND_TYPE
+              				 , SUCCESS_NUMBER * MSG_COST AS SUCCESS_COST
+                       		 , GROUPVALUE2
+       					  FROM (
+        						SELECT 
+          		  	 				 SUBSTR(t47.STANDARD_YMD,0,6) AS STANDARD_YMD
+                 					 , t47.GROUP_UNIQ_NO
+                 					 , t47.SUCCESS_NUMBER
+					       			 , t47.FAILURE_NUMBER
+               						 , t47.MSG_DSTIC
+                 					 , DECODE(t47.MSG_DSTIC, 'SM', 8.8, 'LM', 26.6, 'MM', 55, 'KM',10, 'SR',10,'LR',10,'MR',10, 0) MSG_COST
+                 					 , t22.SEND_TYPE
+                           			 , t47.GROUPVALUE2
+			      				  FROM DACOM_DIST.TB_STATISTICS t47
+            				 LEFT JOIN DACOM_DIST.TB_CMC_DRF002D t22 ON t22.GROUP_UNIQ_NO = t47.GROUP_UNIQ_NO
+            				 LEFT JOIN DACOM_DIST.TB_CMC_DRF002M t21 ON t21.GROUP_UNIQ_NO = t47.GROUP_UNIQ_NO
+                     		 LEFT JOIN KIUPSMS.EMPLOYEE_INFO EMP ON t21.REG_EMP_NO = EMP.EMPL_ID
+                     		 LEFT JOIN KIUPSMS.PART_INFO PART ON EMP.BO_CODE = PART.BO_CODE 
+	     			   		   <where> 
+	     				 	   		   t47.ALT_MSG_YN = 'N'	 
+							   		   <!-- STATS_DSTIC = 'BZ' -->
+							   		   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+								   			AND t47.STANDARD_YMD BETWEEN #{searchStartDt} AND #{searchEndDt}
+					   				   </if>
+						   			   <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+								   			<if test="messageType !='all'">
+												<choose>
+													<when test="messageType == 'message'">
+														<if test="messageTypeDetail == 'SM'">
+															AND t47.msg_dstic = 'SM'
+														</if>
+														<if test="messageTypeDetail == 'LM'">
+															AND t47.msg_dstic = 'LM'
+														</if>
+														<if test="messageTypeDetail == 'MM'">
+															AND t47.msg_dstic = 'MM'
+														</if>
+														<if test="messageTypeDetail == 'all'">
+															AND t47.msg_dstic IN ('SM', 'LM', 'MM')
+														</if>
+													</when>
+													<when test="messageType == 'kakao'">
+														AND t47.msg_dstic = 'KM'
+													</when>
+													<when test="messageType == 'rcs'">
+														<if test="messageTypeDetail == 'SR'">
+															AND t47.msg_dstic = 'SR'
+														</if>
+														<if test="messageTypeDetail == 'LR'">
+															AND t47.msg_dstic = 'LR'
+														</if>
+														<if test="messageTypeDetail == 'MR'">
+															AND t47.msg_dstic = 'MR'
+														</if>
+														<if test="messageTypeDetail == 'DT'">
+															AND t47.msg_dstic = 'DT'
+														</if>
+														<if test="messageTypeDetail == 'FT'">
+															AND t47.msg_dstic = 'FT'
+														</if>
+														<if test="messageTypeDetail == 'all'">
+															AND t47.msg_dstic IN ('SR', 'LR', 'MR', 'DT', 'FT')
+														</if>
+													</when>
+												</choose>
+							   				</if>
+							   		   </if>
+							   		   <if test="partNm != null and partNm !=''">
+										   AND t47.GROUPVALUE2 LIKE '%' || #{partNm} || '%'
+									   </if>
+									   <if test="regNm != null and regNm !=''">
+										   AND EMP.EMPL_NAME LIKE '%' || #{regNm} || '%'
+									   </if>
+							   		   <if test="sendType !=  'all'">
+										   AND t22.SEND_TYPE = #{sendType}
+									   </if>
+					   		   </where>
+			     		  )
+				  ) t1
+			 LEFT JOIN (
+		      			SELECT
+          		    		 GROUP_UNIQ_NO
+          					 , SUCCESS_NUMBER AS RE_SUCCESS_NUMBER
+							 , FAILURE_NUMBER AS RE_FAILURE_NUMBER
+                			 , RE_MSG_COST
+                			 , SUCCESS_NUMBER * RE_MSG_COST AS RE_SUCCESS_COST
+          				  FROM (
+          				  		SELECT 
+		      		   				 GROUP_UNIQ_NO
+		           					 , SUCCESS_NUMBER
+							 		 , FAILURE_NUMBER
+		           					 , DECODE(MSG_DSTIC, 'SM', 8.8, 'LM', 26.6, 'MM', 55, 'KM', 10, 
+		               		  		 		'SR',10,'LR',10,'MR',10, 0) RE_MSG_COST
+								  FROM DACOM_DIST.TB_STATISTICS
+								 WHERE 
+			  		  				 ALT_MSG_YN = 'Y'
+			  		  	  )
+			 ) t2 ON t1.GROUP_UNIQ_NO = t2.GROUP_UNIQ_NO
+			 GROUP BY
+					t1.STANDARD_YMD, t1.GROUPVALUE2, t1.MSG_DSTIC, t1.SEND_TYPE
+		  ) t3
+		  WHERE 
+		  	  t3.SEND_NUMBER > 0
+	   ORDER BY 
+	   		  t3.STANDARD_YMD
+	</sql>
+</mapper>

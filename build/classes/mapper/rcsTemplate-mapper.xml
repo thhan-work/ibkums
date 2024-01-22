@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.rcsTemplate.RcsTemplateDao">
+	<sql id="RCS_TEMPLATE">
+		SELECT 
+			REQ.SEQ              		/* 시퀀스 */
+			, REQ.MSGBASE_ID    		/* 템플릿ID */  
+			, REQ.MSGBASE_FORM_ID 		/* FORM ID*/
+			, REQ.REQ_YMD          		
+			, REQ.BR_ID            		/* 브랜드 ID */
+			,( SELECT BR_NM FROM   DACOM_DIST.RCS_BRAND  WHERE BR_ID = REQ.BR_ID ) AS BR_NM
+			, REQ.SPEC             		/* 채널 */
+			, REQ.CARD_TYPE        		/* 탬플릿 유형 */
+			, REQ.MSGBASE_NM 			/* 템플릿명 */
+			, REQ.MSGBASE_DESC     		/* 서술 내용 */
+			, REQ.FORMATTED_STRING 
+			, REQ.STATUS 				
+			/* 사용(승인결과) - 모듈 사용 시 */	
+			, CASE WHEN REQ.STATUS = '승인요청 성공' AND BASE.APPR_RESULT ='반려' THEN BASE.APPR_RESULT 					
+              		WHEN REQ.STATUS = '승인요청 성공' AND BASE.APPR_RESULT !='반려' THEN BASE.APPR_REASON
+                   	WHEN REQ.STATUS = '03' THEN REQ.APPR_RESULT
+                   	ELSE REQ.STATUS
+                  	END AS APPR_RESULT
+			<!-- , REQ.APPR_RESULT   -->
+			, CASE WHEN REQ.STATUS = '승인요청 성공' AND BASE.APPR_RESULT ='반려' THEN BASE.APPR_REASON
+					<!-- WHEN REQ.STATUS = '승인요청 성공' AND BASE.APPR_RESULT !='반려' THEN BASE.APPR_REASON --> 
+               		WHEN REQ.STATUS = '승인요청 실패' THEN REQ.APPR_REASON
+               		WHEN REQ.STATUS = '03' THEN REQ.APPR_REASON
+               		 ELSE REQ.APPR_REASON
+               		<!-- ELSE REQ.STATUS -->
+               	END AS APPR_REASON
+			, REQ.APPR_REASON as APPR_REASON_REAL
+			, REQ.APPR_REQ_YMD
+			, REQ.APPR_REQ_USER_ID
+			,( SELECT EMPL_NAME FROM   KIUPSMS.EMPLOYEE_INFO  WHERE EMPL_ID = REQ.APPR_REQ_USER_ID ) AS APPR_REQ_USER_NM
+			, REQ.REG_USER_ID 			/* 등록자 */
+			,( SELECT EMPL_NAME FROM   KIUPSMS.EMPLOYEE_INFO  WHERE EMPL_ID = REQ.REG_USER_ID ) AS REG_USER_NM		/* 등록자(이름) */     
+			, REQ.REG_DT           		/* 등록일 */
+			, REQ.UPDATE_DT        
+			, REQ.UPDATE_USER_ID      
+			, REQ.BIZ_SERVICE 			/* 유형 */
+			, BASE.APPR_DT            /* 승인일   */ 
+			<!-- , REQ.APPR_YMD  -->      
+			,( SELECT MEDIA_URL FROM   DACOM_DIST.RCS_MSGBASE_FORM  WHERE MSGBASE_FORM_ID = REQ.MSGBASE_FORM_ID ) AS IMAGE_URL
+			
+			<!-- 탬플릿 화면에서 사용하지 않아 주석처리 
+			, REQ.AGENCY_ID        		
+			, REQ.PRODUCTCODE      
+			, REQ.MSGBASE_ATTRIBUTE
+			, REQ.POLICY_INFO      
+			, REQ.PARAMS      
+			, REQ.BIZ_CONDITION    
+			, REQ.BIZ_CATEGORY
+			, REQ.GUIDE_INFO       
+			, REQ.FORM_PARAMS        
+			-->
+		FROM DACOM_DIST.RCS_MSGBASE_REQ REQ
+    		LEFT JOIN DACOM_DIST.RCS_MSGBASE BASE 
+    		  ON REQ.MSGBASE_ID = BASE.MSGBASE_ID
+   		WHERE 1=1
+		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(cardType)">
+			AND REQ.CARD_TYPE = #{cardType}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isEmpty(cardType)">
+			AND REQ.CARD_TYPE IN ('description', 'cell')
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(bizServiceType)">
+			AND REQ.MSGBASE_FORM_ID = #{bizServiceType}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(statusType)">
+			<!-- <if test="rcsApiCmnct"> -->
+				/* 사용(승인결과) - 모듈 사용 시 */
+				<choose>
+					<when test="statusType eq '저장' ">
+						AND ( (REQ.STATUS = #{statusType} OR REQ.STATUS = '등록') OR (REQ.STATUS ='03' AND REQ.APPR_RESULT = #{statusType}) )
+					</when>
+					<when test="statusType eq '처리중'">
+						AND REQ.STATUS = #{statusType} 
+					</when>
+					<when test="statusType eq '반려'">
+						AND BASE.APPR_RESULT = #{statusType} AND REQ.STATUS = '승인요청 성공'
+					</when>
+					<when test="statusType eq '승인'">
+						AND BASE.APPR_RESULT = #{statusType} 
+					</when>
+					<otherwise> AND REQ.STATUS = #{statusType} </otherwise>
+				</choose>
+			<!-- </if> -->
+			<!-- <if test="!rcsApiCmnct">
+				/* 승인결과 - 수동일시 */
+				AND REQ.APPR_RESULT = #{statusType} 
+			</if> -->	
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+            <choose>
+                <when test="searchWordType eq 'msgbaseNm' ">
+                    AND REQ.MSGBASE_NM like '%'|| #{searchWord} || '%'
+                </when>
+                <when test="searchWordType eq 'msgbaseId' ">
+                    AND REQ.MSGBASE_ID like '%'|| #{searchWord} || '%'
+                </when>
+                <when test="searchWordType eq 'regUserNm' ">
+                    AND REQ.REG_USER_ID IN(
+		    				SELECT EMPL_ID 
+		    				FROM KIUPSMS.EMPLOYEE_INFO
+		    				WHERE EMPL_NAME like '%' || #{searchWord} || '%' 
+		   				)
+                </when>
+                <when test="searchWordType eq 'regUserId' ">
+                    AND REQ.REG_USER_ID like '%'|| #{searchWord} || '%'
+                </when>
+            </choose>
+        </if>
+         <if test="orderName != null and orderName !=''"> ORDER BY
+			  <choose>
+			    <when test="orderName eq 'regDt'"> REG_DT </when>
+			    <when test="orderName eq 'apprDt'"> APPR_DT </when>
+			    <otherwise> REG_DT</otherwise>
+			  </choose> 
+			
+			  <choose>
+			    <when test="orderType eq 'desc'"> DESC </when>
+			    <otherwise> ASC </otherwise>
+			  </choose>			  
+			 NULLS LAST
+	 	</if> 
+	</sql>
+	
+	<sql id="RCS_TEMPLATE1">
+		SELECT 
+			SEQ              
+			,MSGBASE_ID       
+			,MSGBASE_FORM_ID 
+			,REQ_YMD          
+			,BR_ID            
+			,AGENCY_ID        
+			,PRODUCTCODE      
+			,SPEC             
+			,CARD_TYPE        
+			,MSGBASE_DESC     
+			,STATUS           
+			,MSGBASE_ATTRIBUTE
+			,POLICY_INFO      
+			,PARAMS           
+			,FORMATTED_STRING 
+			,REG_USER_ID 
+			,( SELECT EMPL_NAME FROM   KIUPSMS.EMPLOYEE_INFO  WHERE EMPL_ID = REQ.REG_USER_ID ) AS REG_USER_NM     
+			,REG_DT           
+			,UPDATE_DT        
+			,UPDATE_USER_ID   
+			,BIZ_CONDITION    
+			,BIZ_CATEGORY     
+			,BIZ_SERVICE      
+			,GUIDE_INFO       
+			,FORM_PARAMS      
+			,MSGBASE_NM       
+			,APPR_RESULT      
+			,APPR_REASON      
+			,APPR_REQ_YMD
+			,APPR_REQ_USER_ID
+			,( SELECT EMPL_NAME FROM   KIUPSMS.EMPLOYEE_INFO  WHERE EMPL_ID = REQ.APPR_REQ_USER_ID ) AS APPR_REQ_USER_NM
+			,APPR_YMD      
+			,( SELECT MEDIA_URL FROM   DACOM_DIST.RCS_MSGBASE_FORM  WHERE MSGBASE_FORM_ID = REQ.MSGBASE_FORM_ID ) AS IMAGE_URL   
+		FROM DACOM_DIST.RCS_MSGBASE_REQ REQ
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(cardType)">
+				AND CARD_TYPE = #{cardType}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(bizServiceType)">
+				AND MSGBASE_FORM_ID = #{bizServiceType}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(statusType)">
+				AND STATUS = #{statusType}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+	            <choose>
+	                <when test="searchWordType eq 'msgbaseNm' ">
+	                    AND MSGBASE_NM like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'msgbaseId' ">
+	                    AND MSGBASE_ID like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'regUserId' ">
+	                    AND REG_USER_NM like '%'|| #{searchWord} || '%'
+	                </when>
+	            </choose>
+	        </if>
+		</where>
+	</sql>
+
+	<!-- RCS 템플릿 관리 조회 [REQ] Count -->
+	<select id="findTotalCount" resultType="java.lang.Integer">
+		/* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.findTotalCount RCS 탬플릿 갯수 조회 */
+		SELECT COUNT(*) FROM (
+		<include refid="RCS_TEMPLATE" />
+		)
+	</select>
+
+	<!-- RCS 템플릿 관리 조회[REQ,BASE] -->
+	<select id="findRcsTemplate" resultType="com.ibk.msg.web.rcsTemplate.RcsTemplate">
+		/* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.findRcsTemplate RCS 탬플릿 조회 */
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.header" />
+		</if>
+			<include refid="RCS_TEMPLATE" />
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.bottom" />
+		</if>
+	</select>
+	
+	<!-- RCS 템플릿 관리[FORM] - 유형 조회  -->
+ 	<select id="selectRcsBizService" parameterType="map" resultType="map">
+	   	/* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.selectBizService RCS 탬플릿 유형 콤보조회 */ 
+		SELECT MSGBASE_FORM_ID AS MSGBASE_FORM_ID /* 메시지베이스폼ID  */
+		     , BIZ_SERVICE     AS BIZ_SERVICE     /* 승인 입금 */
+		     , MEDIA_URL       AS MEDIA_URL       /* 미디어URL */
+		FROM DACOM_DIST.RCS_MSGBASE_FORM 
+	    WHERE CARD_TYPE = #{cardType}
+	    ORDER BY MSGBASE_FORM_ID ASC
+   </select>
+   
+   <!-- RCS 템플릿 관리[REQ] - 탬플릿 ID  -->
+   <select id="selectRcsTemplateDBYmd" resultType="map"> <!--  selectRcsTemplateSeq  -->
+    	/* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.selectRcsTemplateDBYmd  */
+		SELECT NVL(MAX(SEQ) + 1, 1) AS SEQ
+		     , TO_CHAR(SYSDATE, 'YYYYMMDD') AS TODAY
+			 , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS') AS YMDHIS
+		FROM DACOM_DIST.RCS_MSGBASE_REQ
+    </select>   
+    
+     <!-- RCS 템플릿 관리[BASE]  -->
+   <select id="selectRcsTemplateBase" resultType="map">
+    	/* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.selectRcsTemplateBase RCS 탬플릿 조회[BASE] */
+		SELECT *		
+		FROM DACOM_DIST.RCS_MSGBASE
+		WHERE  MSGBASE_ID        = #{msgbaseId}
+    </select>   
+    
+    <!-- RCS 템플릿 추가 [REQ] -->
+	<insert id="insertRcsReq" parameterType="map">
+    /* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.insertRcsReq RCS 템플릿 등록[REQ] */
+     INSERT INTO DACOM_DIST.RCS_MSGBASE_REQ
+     ( 
+        SEQ
+      , MSGBASE_ID        
+      , MSGBASE_FORM_ID   
+      , REQ_YMD            
+      , BR_ID             
+      <!--  , AGENCY_ID  -->         
+      , PRODUCTCODE       
+      , SPEC              
+      , CARD_TYPE         
+      , MSGBASE_DESC      
+      , STATUS            
+      , MSGBASE_ATTRIBUTE 
+      , POLICY_INFO       
+      , PARAMS            
+      , FORMATTED_STRING  
+      , REG_USER_ID       
+      , REG_DT            
+      , UPDATE_DT         
+      <!-- , UPDATE_USER_ID  -->    
+      , BIZ_CONDITION     
+      , BIZ_CATEGORY      
+      , BIZ_SERVICE       
+      , GUIDE_INFO        
+      , FORM_PARAMS       
+      , MSGBASE_NM        
+      , APPR_RESULT       
+      , APPR_REASON       
+      , APPR_REQ_YMD      
+      , APPR_YMD   
+      , APPR_REQ_USER_ID     
+     ) VALUES (
+       (
+       		SELECT 
+       			NVL (MAX (SEQ), 0) + 1  
+       		FROM DACOM_DIST.RCS_MSGBASE_REQ 
+       	)
+      , #{msgbaseId}
+      , #{msgbaseFormId}
+      , TO_CHAR(SYSDATE, 'YYYYMMDD')
+      , #{brId}  
+      <!-- , #{agencyId} -->
+      , #{productcode}
+      , #{spec}
+      , #{cardType}
+      , #{msgbaseDesc}
+      , #{status}
+      , #{msgbaseAttribute}
+      , #{policyInfo}
+      , #{params:CLOB}
+      , #{formattedString:CLOB}
+      , #{regUserId}
+      , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+      , #{updateDt}
+      <!-- , #{updateUserId}  -->
+      , #{bizCondition}
+      , #{bizCategory}
+      , #{bizService}
+      , #{guideInfo}
+      , #{formParams:CLOB}
+      , #{msgbaseNm}
+      , #{apprResult}
+      , #{apprReason}
+      , #{apprReqYmd}
+      , #{apprYmd}
+      , #{apprReqUserId}
+    )
+    </insert>
+    
+    <!-- RCS 템플릿 수정 [REQ] -->
+    <update id="updateRcsReq"  parameterType="map">
+        /* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.updateRcsReq RCS 템플릿수정[REQ] */
+    	UPDATE DACOM_DIST.RCS_MSGBASE_REQ
+    	   SET MSGBASE_FORM_ID  = #{msgbaseFormId} 
+    	   	 , BR_ID            = #{brId}
+    	     , PRODUCTCODE      = #{productcode}
+    	     , SPEC             = #{spec}
+    	     , CARD_TYPE        = #{cardType}      /* 템플릿속성 */
+    	     , BIZ_CONDITION    = #{bizCondition}  
+    	     , BIZ_CATEGORY     = #{bizCategory}   /* 유형그룹 */   
+    	     , BIZ_SERVICE      = #{bizService}    /* 유형 */    
+    	     , POLICY_INFO      = #{policyInfo}
+    	     , PARAMS           = #{params:CLOB}
+    	     , FORMATTED_STRING = #{formattedString:CLOB}
+    	     , GUIDE_INFO       = #{guideInfo}
+    	     , FORM_PARAMS      = #{formParams:CLOB}
+    	     , MSGBASE_NM       = #{msgbaseNm}    /* 템플릿명 */
+    	     , MSGBASE_DESC     = #{msgbaseDesc}  /* 내용 */
+    	     , STATUS			= #{status}
+    	     , APPR_REASON		= #{apprReason}
+    	     , APPR_RESULT		= #{apprResult}
+    	     , APPR_REQ_YMD		= #{apprReqYmd}
+    	     , APPR_REQ_USER_ID	= #{apprReqUserId}
+    	     , APPR_YMD			= #{apprYmd}
+    	     , UPDATE_DT        = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+    	     , UPDATE_USER_ID   = #{updateUserId}    	     
+	     WHERE SEQ        = #{seq}
+	       AND MSGBASE_ID = #{msgbaseId} 
+    </update>   
+    
+    <!-- RCS 템플릿 삭제 [REQ] -->
+    <delete id="deleteRcsReq"  parameterType="map">
+    	/* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.deleteRcsReq RCS 템플릿 삭제 등록일때만 삭제 [REQ] */
+        DELETE 
+          FROM DACOM_DIST.RCS_MSGBASE_REQ   	       
+	     WHERE SEQ        = #{seq}
+	       AND MSGBASE_ID = #{msgbaseId}
+                
+    	<!-- UPDATE DACOM_DIST.RCS_MSGBASE_REQ
+    	   SET ACTIVE_YN		= 'N' 
+    	     , UPDATE_DT        = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+    	     , UPDATE_USER_ID   = #{updateUserId}    	     
+	     WHERE SEQ        = #{seq}
+	       AND MSGBASE_ID = #{msgbaseId}  --> 
+    </delete>
+    
+     <!-- RCS 템플릿 추가 [BASE] -->
+    <insert id="insertRcsBase" parameterType="map">
+	   /* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.insertRcsBase RCS 템플릿 추가[BASE] */
+	     INSERT INTO DACOM_DIST.RCS_MSGBASE
+	     ( 
+	     	MSGBASE_ID
+			, MSGBASE_NAME
+			, MSGBASE_FORM_ID
+			, BR_ID
+			, AGENCY_ID
+			, PRODUCTCODE
+			, SPEC
+			, CARD_TYPE
+			, STATUS
+			, INPUT_TEXT
+			, MSGBASE_ATTRIBUTE
+			, POLICY_INFO
+			, GUIDE_INFO
+			, PARAMS
+			, FORMATTED_STRING
+			, APPR_RESULT
+			, APPR_REASON
+			, APPR_DT
+			, REG_USER_ID
+			, REG_DT
+			, UPDATE_USER_ID
+			, UPDATE_DT
+	     ) VALUES (
+	       	#{msgbaseId}
+	      , #{msgbaseName}
+	      , #{msgbaseFormId}
+	      , #{brId}  
+	      , #{agencyId}
+	      , #{productcode}
+	      , #{spec}
+	      , #{cardType}
+	      , 'ready' <!-- #{status} 수동일 경우 -->
+	      , #{inputText} <!--  -->
+	      , #{msgbaseAttribute}
+	      , #{policyInfo}
+	      , #{guideInfo}
+	      , #{params:CLOB}
+	      , #{formattedString:CLOB}
+	      , '저장'
+	      , #{apprReason}
+	      , #{apprDt}
+	      , #{regUserId}    
+	      , #{regDt}
+	      , #{updateUserId} 
+	      , #{updateDt}
+	    )
+    </insert>
+    
+    <!-- RCS 템플릿 수정 [BASE] -->
+    <update id="updateRcsBase"  parameterType="map">
+        /* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.updateRcsBase RCS 승인요청[BASE] */
+    	UPDATE DACOM_DIST.RCS_MSGBASE
+    		SET MSGBASE_NAME              	=  #{msgbaseName}            
+				, MSGBASE_FORM_ID           =  #{msgbaseFormId}        
+				, BR_ID                     =  #{brId}                   
+				, AGENCY_ID                 =  #{agencyId}               
+				, PRODUCTCODE               =  #{productcode}            
+				, SPEC                      =  #{spec}                   
+				, CARD_TYPE                 =  #{cardType}               
+				<!-- , STATUS                    =  #{status}  -->
+				, INPUT_TEXT                =  #{inputText}    
+				, MSGBASE_ATTRIBUTE         =  #{msgbaseAttribute}       
+				, POLICY_INFO               =  #{policyInfo}             
+				, GUIDE_INFO                =  #{guideInfo}              
+				, PARAMS                    =  #{params:CLOB}            
+				, FORMATTED_STRING          =  #{formattedString:CLOB}   
+				, APPR_RESULT               =  #{apprResult}             
+				, APPR_REASON               =  #{apprReason}             
+				, APPR_DT                   =  #{apprDt}                 
+				, UPDATE_USER_ID            =  #{updateUserId}           
+				, UPDATE_DT                 =  TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')               
+	     WHERE MSGBASE_ID = #{msgbaseId} 
+    </update>   
+    
+     <!-- RCS 템플릿 삭제 [BASE] -->
+    <delete id="deleteRcsBase"  parameterType="map">
+      /* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.deleteRcsBase RCS 탬플릿 삭제[BASE] */
+        DELETE 
+          FROM DACOM_DIST.RCS_MSGBASE   	       
+	     WHERE MSGBASE_ID = #{msgbaseId}
+    	<!-- UPDATE DACOM_DIST.RCS_MSGBASE
+    	   SET STATUS		= 'deleted'
+	     WHERE MSGBASE_ID = #{msgbaseId}  --> 
+    </delete>          
+    
+    <!-- RCS 템플릿 승인요청 [REQ] -->
+    <update id="approvalRcsReq"  parameterType="map">
+      /* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.approvalRcsReq  RCS 승인요청[REQ] */
+    	UPDATE DACOM_DIST.RCS_MSGBASE_REQ
+    	   SET STATUS			= #{status}
+    	     , APPR_RESULT		= #{apprResult}
+    	     , APPR_REASON		= #{apprReason}
+    	     , APPR_REQ_USER_ID	= #{apprReqUserId}
+    	     , APPR_REQ_YMD		= TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+    	     , APPR_YMD        	= TO_CHAR(SYSDATE, 'YYYYMMDD')
+	     WHERE SEQ        = #{seq}
+	       AND MSGBASE_ID = #{msgbaseId} 
+    </update>
+    
+     <!-- RCS 템플릿 승인요청 [BASE] -->
+    <update id="approvalRcsBase"  parameterType="map">
+        /* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.approvalRcsBase RCS 템플릿 승인요청 [BASE] */
+    	UPDATE DACOM_DIST.RCS_MSGBASE
+    	   SET APPR_RESULT		= 	#{apprResult}
+    	   	 , STATUS			= 	#{status}
+    	     <!--  , APPR_REASON		= #{apprReason}  -->
+    	     , APPR_DT		= TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+	     WHERE MSGBASE_ID = #{msgbaseId} 
+    </update>     
+    
+    <!-- RCS 템플릿 조회 [FORM] -->
+     <select id="selectRcsForm" parameterType="map"  resultType="com.ibk.msg.web.rcsTemplate.RcsTemplateForm">
+    	/* com.ibk.msg.web.rcsTemplate.RcsTemplateDao.selectRcsForm 탬플릿 폼 조회 */ 
+        SELECT PRODUCTCODE      AS PRODUCTCODE      /* sms      */
+             , SPEC             AS SPEC             /* Carousel */
+             , CARD_TYPE        AS CARD_TYPE        /* 유형           */
+             , BIZ_CONDITION    AS BIZ_CONDITION    /* 업태         */
+             , BIZ_CATEGORY     AS BIZ_CATEGORY     /* 유형그룹      */
+             , BIZ_SERVICE      AS BIZ_SERVICE      /* 유형         */
+             , POLICY_INFO      AS POLICY_INFO      /* 검증정보      */         
+             , GUIDE_INFO       AS GUIDE_INFO       /* 중계사 가이드용 */
+             
+             , DBMS_LOB.SUBSTR(FORM_PARAMS     , DBMS_LOB.GETLENGTH(FORM_PARAMS))       AS FORM_PARAMS      /* 검수 파라미터 */
+             <!-- , DBMS_LOB.SUBSTR(FORMATTED_STRING, DBMS_LOB.GETLENGTH(FORMATTED_STRING) ) AS FORMATTED_STRING -->         
+             ,  FORMATTED_STRING AS FORMATTED_STRING /* 자바에서 처리 */     
+          FROM DACOM_DIST.RCS_MSGBASE_FORM
+         WHERE MSGBASE_FORM_ID = #{msgbaseFormId}
+    </select>
+
+</mapper>

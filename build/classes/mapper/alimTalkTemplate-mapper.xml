@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.alimTalkTemplate.AlimTalkTemplateDao">
+	<sql id="ALIMTALK_TEMPLATE">
+		SELECT 
+			KKO_TMPL_CD
+			, SND_PROPKEY
+			, BIZ_CD
+			, BIZ_TMPL_CD
+			, TMPL_NM
+			, TMPL_MSG
+			, BTN_INFO
+			, RESND_YN
+			, ACTIVE_YN
+			, REG_YMS
+			, UPDT_YMS
+			, STATUS_AD
+			, BLOCK_NUM
+			, TYPE_GB
+			, SENDER_KEY_TYPE
+			, TEMPLATE_MESSAGE_TYPE
+			, TEMPLATE_EMPHASIZE_TYPE
+			, TEMPLATE_EXTRA
+			, TEMPLATE_IMAGE_NAME
+			, TEMPLATE_IMAGE_URL
+			, TEMPLATE_TITLE
+			, TEMPLATE_SUBTITLE
+			, TEMPLATE_HEADER
+			, TEMPLATE_ITEM_HIGHLIGHT
+			, TEMPLATE_ITEM
+			, CATEGORY_CODE
+			, SECURITY_FLAG
+			, QUICK_REPLIES
+			, "COMMENT"
+			, ATTACHMENT
+			, SINCE
+			, PAGE
+			, "COUNT"
+			, REG_USER_ID
+			,( SELECT EMPL_NAME FROM   KIUPSMS.EMPLOYEE_INFO  WHERE EMPL_ID = KKO.REG_USER_ID ) AS REG_USER_NM
+			, APPR_RESULT
+			, APPR_REQ_YMD
+			, APPR_YMD
+			, APPR_REQ_USER_ID
+			,( SELECT EMPL_NAME FROM   KIUPSMS.EMPLOYEE_INFO  WHERE EMPL_ID = KKO.APPR_REQ_USER_ID ) AS APPR_REQ_USER_NM
+		FROM   DACOM_DIST.TB_KKO_TMPL KKO
+		<where>
+			<if test="kkoTmplCd != null">
+				AND KKO_TMPL_CD        = #{kkoTmplCd}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(statusType)">
+				AND KKO.APPR_RESULT = #{statusType} <!-- AND REQ.STATUS = #{statusType} -->
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+	            <choose>
+	                <when test="searchWordType eq 'tmplNm' ">
+	                    AND TMPL_NM like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'kkoTmplCd' ">
+	                    AND KKO_TMPL_CD like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'regUserId' ">
+	                    AND REG_USER_ID like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'regUserNm' ">
+	                    AND KKO.REG_USER_ID IN(
+		    				SELECT EMPL_ID 
+		    				FROM KIUPSMS.EMPLOYEE_INFO
+		    				WHERE EMPL_NAME like '%' || #{searchWord} || '%' 
+		   				)
+	                </when>
+	            </choose>
+	        </if>
+	        </where>
+			<if test="orderName != null and orderName !=''"> ORDER BY
+			  <choose>
+			    <when test="orderName eq 'regYms'"> REG_YMS </when>
+			    <when test="orderName eq 'apprYmd'"> APPR_YMD </when>
+			    <otherwise> REG_YMS</otherwise>
+			  </choose> 
+			
+			  <choose>
+			    <when test="orderType eq 'desc'"> DESC </when>
+			    <otherwise> ASC </otherwise>
+			  </choose>			  
+			  NULLS LAST
+	 		</if>		
+	</sql>
+	
+	<!-- 알림톡 템플릿  조회 Count SQL -->
+	<select id="findTotalCount" resultType="java.lang.Integer">
+	/* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.findTotalCount 알림톡 갯수 조회 */
+		SELECT COUNT(*) FROM (
+		<include refid="ALIMTALK_TEMPLATE" />
+		)
+	</select>
+
+	<!--알림톡 템플릿 조회  -->
+	<select id="findAlimTalkTemplate" resultType="com.ibk.msg.web.alimTalkTemplate.AlimTalkTemplate">
+	/* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.findAlimTalkTemplate 알림톡 조회 */
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.header" />
+		</if>		
+			<include refid="ALIMTALK_TEMPLATE" />
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.bottom" />
+		</if>
+		
+	</select>
+	
+	<!--알림톡 발신프로필 키 정보  -->
+	<select id="selectSndPropkeyInfo" resultType="com.ibk.msg.web.alimTalkTemplate.AlimTalkSndPropkey">
+	/* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.selectSndPropkeyInfo 알림톡 발신프로필 키 정보 조회 */
+		SELECT *
+		FROM   (SELECT SEQ ,
+		               SND_PROPKEY_NM ,
+		               SND_PROPKEY
+		       FROM    DACOM_DIST.TB_KKO_SND_PROPKEY
+		       ORDER BY SEQ ASC
+		       )
+		WHERE  ROWNUM = 1
+	</select>
+	
+	<!--알림톡 템플릿 추가  -->
+	<insert id="insert" parameterType="map">
+    /* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.insert 알림톡등록 */
+     INSERT INTO DACOM_DIST.TB_KKO_TMPL
+	     (
+	     	KKO_TMPL_CD
+			 , SND_PROPKEY  
+			, BIZ_CD
+			, BIZ_TMPL_CD
+			, TMPL_NM
+			, TMPL_MSG
+			, BTN_INFO
+			, RESND_YN
+			, ACTIVE_YN
+			, REG_YMS
+			, UPDT_YMS
+			, STATUS_AD
+			, BLOCK_NUM
+			, TYPE_GB
+			<!--, SENDER_KEY_TYPE
+			, TEMPLATE_MESSAGE_TYPE
+			, TEMPLATE_EMPHASIZE_TYPE -->
+			, TEMPLATE_EXTRA
+			, TEMPLATE_IMAGE_NAME
+			, TEMPLATE_IMAGE_URL
+			, TEMPLATE_TITLE
+			, TEMPLATE_SUBTITLE
+			, TEMPLATE_HEADER
+			, TEMPLATE_ITEM_HIGHLIGHT
+			, TEMPLATE_ITEM
+			, CATEGORY_CODE
+			<!-- , SECURITY_FLAG -->
+			, QUICK_REPLIES
+			, "COMMENT"
+			, ATTACHMENT
+			, SINCE
+			<!-- , PAGE
+			, "COUNT" -->
+			, REG_USER_ID
+			, APPR_RESULT
+			, APPR_REQ_YMD
+			, APPR_YMD
+			, APPR_REQ_USER_ID
+	     ) VALUES (
+	     	#{kkoTmplCd}
+			, #{sndPropkey}
+			, #{bizCd}
+			, #{bizTmplCd}
+			, #{tmplNm}
+			, #{tmplMsg}
+			, #{btnInfo}
+			, 'N' <!-- #{resndYn} -->
+			, 'Y'
+			, TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+			, #{updtYms}
+			, #{statusAd}
+			, #{blockNum}
+			, 'KM'
+			<!-- , #{senderKeyType}
+			, #{templateMessageType}
+			, #{templateEmphasizeType} -->
+			, #{templateExtra}
+			, #{templateImageName}
+			, #{templateImageUrl}
+			, #{templateTitle}
+			, #{templateSubtitle}
+			, #{templateHeader}
+			, #{templateItemHighlight}
+			, #{templateItem}
+			, #{categoryCode}
+			<!-- , #{securityFlag} -->
+			, #{quickReplies}
+			, #{comment}
+			, #{attachment}
+			, #{since}
+			<!-- , #{page}
+			, #{count} -->
+			, #{regUserId}
+			, '저장'
+			, #{apprReqYmd}
+			, #{apprYmd}
+			, #{apprReqUserId}
+	    )
+    </insert>
+    
+    <update id="update"  parameterType="map">
+        /* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.update 알림톡 수정 */
+    	UPDATE DACOM_DIST.TB_KKO_TMPL
+    		SET  SND_PROPKEY                 =     #{sndPropkey}
+				, BIZ_CD                      =     #{bizCd}
+				, BIZ_TMPL_CD                 =     #{bizTmplCd}
+				, TMPL_NM                     =     #{tmplNm}
+				, TMPL_MSG                    =     #{tmplMsg}
+				, BTN_INFO                    =     #{btnInfo}
+				, RESND_YN                    =     #{resndYn}
+				, ACTIVE_YN                   =     #{activeYn}
+				, UPDT_YMS                    =     TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+				, UPDT_USER_ID                =     #{updtUserId}
+				<!-- , STATUS_AD                   =     #{statusAd}
+				 , BLOCK_NUM                   =     #{blockNum}
+				, TYPE_GB                     =     #{typeGb} 
+				 , SENDER_KEY_TYPE             =     #{senderKeyType}           
+				 , TEMPLATE_MESSAGE_TYPE       =     #{templateMessageType}     
+				 , TEMPLATE_EMPHASIZE_TYPE     =     #{templateEmphasizeType}   
+				 , TEMPLATE_EXTRA              =     #{templateExtra}           
+				 , TEMPLATE_IMAGE_NAME         =     #{templateImageName}       
+				 , TEMPLATE_IMAGE_URL          =     #{templateImageUrl}        
+				 , TEMPLATE_TITLE              =     #{templateTitle}           
+				 , TEMPLATE_SUBTITLE           =     #{templateSubtitle}        
+				 , TEMPLATE_HEADER             =     #{templateHeader}          
+				 , TEMPLATE_ITEM_HIGHLIGHT     =     #{templateItemHighlight}   
+				 , TEMPLATE_ITEM               =     #{templateItem}            
+				 , CATEGORY_CODE               =     #{categoryCode}            
+				 , SECURITY_FLAG               =     #{securityFlag}            
+				 , QUICK_REPLIES               =     #{quickReplies}            
+				 , "COMMENT"                   =     #{comment}                 
+				 , ATTACHMENT                  =     #{attachment}              
+				 , SINCE                       =     #{since}                   
+				 , PAGE                        =     #{page}                    
+				 , "COUNT"                     =     #{count}			 -->		
+				, APPR_RESULT                 =     #{apprResult}               
+				, APPR_REQ_YMD                =    null <!--#{apprReqYmd} -->              
+				, APPR_YMD                    =    null <!--#{apprYmd}    -->              
+				, APPR_REQ_USER_ID            =    null <!-- #{apprReqUserId}  -->        
+	     WHERE KKO_TMPL_CD     = #{kkoTmplCd}
+    </update>   
+
+	<delete id="delete"  parameterType="map">
+    	/* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.delete 알림톡 삭제 */
+         DELETE 
+          FROM DACOM_DIST.TB_KKO_TMPL   	       
+	     WHERE KKO_TMPL_CD   =      #{kkoTmplCd}
+    </delete>
+    
+    <!--  <update id="approval"  parameterType="map">
+        /* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.delete 알림톡 승인 */
+    	UPDATE DACOM_DIST.TB_KKO_TMPL
+    	   SET ACTIVE_YN	   = 'N'
+    	   	 , APPR_RESULT	   = CONCAT( #{apprResult}, '(삭제)') 
+    	     , UPDT_YMS        = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+    	     , UPDT_USER_ID    = #{updtUserId}	
+	     WHERE KKO_TMPL_CD     = #{kkoTmplCd}
+    </update>
+     -->
+    
+    <!--알림톡 템플릿 승인요청 -->
+    <update id="approval"  parameterType="map">
+        /* com.ibk.msg.web.alimTalkTemplate.alimTalkTemplateDao.approval 알림톡 승인 */
+    	UPDATE DACOM_DIST.TB_KKO_TMPL
+    	   SET APPR_RESULT		= '승인완료'
+    	     , APPR_REQ_USER_ID	= #{apprReqUserId}
+    	     , APPR_REQ_YMD		= TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+    	     , APPR_YMD        	= TO_CHAR(SYSDATE, 'YYYYMMDD')
+	     WHERE KKO_TMPL_CD   =      #{kkoTmplCd} 
+    </update>
+</mapper>

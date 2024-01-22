@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.accessmanage.AccessManageDao">
+  <sql id="AccessUsers">
+    SELECT
+    EMP_NO
+    , EMP_NM
+    , EMP_IP
+    , EMP_DEP_NM
+    , CREATED_DT
+    , USE_YN
+    FROM ACCESS_MANGE
+    WHERE 1=1
+    <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(startSearchCreateDt)">
+      <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(endSearchCreateDt)">
+        AND CREATED_DT BETWEEN #{startSearchCreateDt} AND #{endSearchCreateDt}
+      </if>
+    </if>
+    <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(useYn)">
+      AND USE_YN = #{useYn}
+    </if>
+    <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+      <choose>
+        <when test="searchWordType eq 'empNm' ">
+          AND EMP_NM like '%'|| #{searchWord} || '%'
+        </when>
+        <when test="searchWordType eq 'empNo' ">
+          AND EMP_NO like '%'|| #{searchWord} || '%'
+        </when>
+        <when test="searchWordType eq 'empIp' ">
+          AND EMP_IP like '%'|| #{searchWord} || '%'
+        </when>
+        <when test="searchWordType eq 'empDepNm' ">
+          AND EMP_DEP_NM like '%'|| #{searchWord} || '%'
+        </when>
+      </choose>
+    </if>
+    ORDER BY CREATED_DT DESC
+  </sql>
+
+  <insert id="addUser">
+    insert into ACCESS_MANGE (EMP_NO, EMP_NM, EMP_IP, EMP_DEP_NM, CREATED_DT)
+    values (#{empNo}, #{empNm}, #{empIp}, #{empDepNm}, to_char(sysdate, 'YYYY-MM-DD'))
+  </insert>
+
+  <update id="modifyUser">
+    update ACCESS_MANGE
+    set
+        EMP_NM = #{empNm}
+        ,EMP_IP = #{empIp}
+        ,EMP_DEP_NM = #{empDepNm}
+        ,USE_YN = #{useYn}
+    WHERE EMP_NO = #{empNo}
+  </update>
+  <delete id="removeUser">
+    DELETE FROM ACCESS_MANGE WHERE EMP_NO = #{empNo}
+  </delete>
+
+  <select id="findUsers" resultType="com.ibk.msg.web.accessmanage.AccessUser">
+    <include refid="PaginationMapper.header"/>
+    <include refid="AccessUsers"/>
+    <include refid="PaginationMapper.bottom"/>
+  </select>
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT COUNT(*) FROM (
+    <include refid="AccessUsers"/>
+    )
+  </select>
+  <select id="findDetail" resultType="com.ibk.msg.web.accessmanage.AccessUser">
+    SELECT
+      EMP_NO
+      , EMP_NM
+      , EMP_IP
+      , EMP_DEP_NM
+      , CREATED_DT
+      , USE_YN
+    FROM ACCESS_MANGE WHERE EMP_NO = #{empNo}
+  </select>
+
+</mapper>

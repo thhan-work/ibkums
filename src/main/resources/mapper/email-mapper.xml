@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.email.EmailDao">
+  
+  
+ <sql id="EMARKETING">
+    SELECT 
+		USER_ID
+		,SENDDATE                                                     
+        ,CUSTOMER_KEY                                                               
+        ,CUSTOMER_EMAIL                                                             
+        ,CUSTOMER_NM                                                                
+        ,CAMPAIGN_NM                                                                
+        ,STATUS         
+ 	FROM 
+ 	(
+        SELECT
+            B.USER_ID
+            ,TO_CHAR (TO_DATE ((A.SEND_DT || A.SEND_TM), 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD HH24:MI:SS' ) AS SENDDATE                                                     
+            ,A.CUSTOMER_KEY                                                               
+            ,A.CUSTOMER_EMAIL                                                             
+            ,A.CUSTOMER_NM                                                                
+            ,B.CAMPAIGN_NM                                                                
+            ,DECODE (A.ERROR_CD, '250', '성공', '실패') AS STATUS                          
+        FROM 
+        	WISEU.NVSENDLOG A
+        	, WISEU.NVCAMPAIGN B                                                                 
+       	WHERE 
+       		1=1 
+            AND A.CAMPAIGN_NO = B.CAMPAIGN_NO
+            <if test="searchWordType == 'email'">
+            	AND A.CUSTOMER_EMAIL = #{searchWord}
+          	</if>
+          	<if test="searchWordType == 'customerId'">
+            	AND LTRIM(A.CUSTOMER_KEY, '0') = #{searchWord}
+          	</if>
+          	AND SEND_DT BETWEEN #{searchStartDt} AND #{searchEndDt}
+		ORDER BY 
+			A.SEND_DT DESC, SEND_TM DESC 
+   	)
+ </sql>
+
+<sql id="ECARE">
+    SELECT 
+    	ECARE_NO
+		,USER_ID
+		,SENDDATE                                                     
+        ,CUSTOMER_KEY                                                               
+        ,CUSTOMER_EMAIL                                                             
+        ,CUSTOMER_NM                                                                
+        ,ECARE_NM                                                                
+        ,STATUS  
+        ,SLOT1
+ 	FROM 
+ 	(
+        SELECT
+        	A.ECARE_NO
+            ,B.USER_ID
+            ,TO_CHAR (TO_DATE ((A.SEND_DT || A.SEND_TM), 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD HH24:MI:SS' ) AS SENDDATE                                                     
+            ,A.CUSTOMER_KEY                                                               
+            ,A.CUSTOMER_EMAIL                                                             
+            ,A.CUSTOMER_NM                                                                
+            ,B.ECARE_NM                                                             
+            ,DECODE (A.ERROR_CD, '250', '성공', '실패') AS STATUS      
+            ,A.SLOT1                  
+         FROM 
+         	WISEU.NVECARESENDLOG A                                                            
+             ,WISEU.NVECAREMSG B                                                                 
+        WHERE 
+        	A.ECARE_NO = B.ECARE_NO
+            <if test="searchWordType == 'email'">
+	            AND A.CUSTOMER_EMAIL = #{searchWord}
+      		</if>
+       		<if test="searchWordType == 'customerId'">
+	            AND LTRIM(A.CUSTOMER_KEY, '0') = #{searchWord}
+       		</if>
+       		AND SEND_DT BETWEEN #{searchStartDt} AND #{searchEndDt}
+		ORDER BY 
+			A.SEND_DT DESC, SEND_TM DESC 
+	)
+</sql>
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(*) AS CNT                              
+    FROM ( 
+    	<if test="emailType == 'emarketing'">
+          <include refid="EMARKETING"/> 
+        </if>
+       	<if test="emailType == 'ecare'">
+          <include refid="ECARE"/> 
+        </if>
+     )
+  </select>
+  
+  
+  <select id="findAllMessage" resultType="com.ibk.msg.web.email.Email">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+    	<if test="emailType == 'emarketing'">
+          <include refid="EMARKETING"/> 
+        </if>
+       	<if test="emailType == 'ecare'">
+          <include refid="ECARE"/> 
+        </if>       
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+    
+  <update id="resendUpdate" parameterType="com.ibk.msg.web.email.Email">
+	UPDATE 
+		WISEU.NVFOR_REMIT1 
+	SET 
+		SEND_FG='0', 
+		BASE_DAY = TO_CHAR(SYSDATE,'YYYYMMDD') 
+	WHERE 
+		REM_CODE = #{slot1}
+  </update>
+    
+</mapper>

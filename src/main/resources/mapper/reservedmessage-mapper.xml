@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.reservedmessage.ReservedMessageDao">
+  <sql id="RESERVEDMESSAGE">
+  SELECT MSGKEY AS TRAN_PR,  
+  				'MMS' AS MESSAGE_TYPE,
+                PHONE AS TRAN_PHONE,                             
+         		CALLBACK AS TRAN_CALLBACK,                             
+                STATUS AS TRAN_STATUS,                           
+                REQDATE AS TRAN_DATE,                            
+                MSG AS TRAN_MSG,
+                ETC5 AS TRAN_ETC5                         
+        FROM
+        	DACOM_DIST.DIST_MMS_MSG                            
+        WHERE 1=1
+        	AND ID = #{boCode}
+        	AND to_char(REQDATE, 'yyyymmdd') >= to_char(SYSDATE, 'yyyymmdd')
+        	AND STATUS = '0'                               
+        	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+            <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+            AND REQDATE BETWEEN to_date(#{searchStartDt} || '000000', 'yyyymmddhh24miss') AND to_date(#{searchEndDt} || '235959', 'yyyymmddhh24miss')
+            </if> 
+            </if> 
+        	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+            <if test="searchPhoneNumber != null or searchNumber != ''">
+ 			AND PHONE = #{searchPhoneNumber}
+        	</if>
+        	</if>
+        UNION                                                          
+        SELECT TRAN_PR, 
+        	   'SMS' AS MESSAGE_TYPE,	                                      
+			   TRAN_PHONE,                                                      
+			   TRAN_CALLBACK,                                                               
+			   TRAN_STATUS,               
+			   TRAN_DATE,                                                            
+			   TRAN_MSG,     
+			   TRAN_ETC5                                                           
+         FROM                                                 
+            DACOM_DIST.DIST_SMS                           
+         	WHERE 1=1                                    
+            AND TRAN_ID = #{boCode}
+            AND to_char(TRAN_DATE, 'yyyymmdd') >= to_char(SYSDATE, 'yyyymmdd')
+            AND TRAN_STATUS = '1'                      
+ 			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+            <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+            	AND TRAN_DATE BETWEEN to_date(#{searchStartDt} || '000000', 'yyyymmddhh24miss') AND to_date(#{searchEndDt} || '235959', 'yyyymmddhh24miss')
+            </if> 
+            </if> 
+        	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchPhoneNumber)">
+            <if test="searchPhoneNumber != null or searchNumber != ''">
+ 				AND TRAN_PHONE = #{searchPhoneNumber}
+        	</if>
+        	</if>
+  </sql>
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(TRAN_PR) AS CNT                             
+    FROM ( 
+          <include refid="RESERVEDMESSAGE"/> 
+     )
+  </select>
+  
+  <select id="findReservedMessage" resultType="com.ibk.msg.web.reservedmessage.ReservedMessage">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+     SELECT                                                                      
+	     TRAN_PR as id, 
+	     MESSAGE_TYPE as messageType,                                                               
+	     TRAN_PHONE as phoneNumber,                                                      
+	     TRAN_CALLBACK as callBack,                                                               
+	     TRAN_STATUS as sendStatus,
+	     TRAN_DATE as regDt,                                                            
+	     TRAN_MSG as msg,
+	     TRAN_ETC5 as etc5
+ 	FROM (                                                                      
+          <include refid="RESERVEDMESSAGE"/>                 
+         )                                                       
+        ORDER BY TRAN_DATE DESC 
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  <delete id="cancel" >
+	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+  	<if test="messageType == 'SMS'">
+	DELETE FROM DACOM_DIST.DIST_SMS WHERE TRAN_PR = #{id}
+	</if>
+	</if>
+	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+  	<if test="messageType == 'MMS'">
+	DELETE FROM DACOM_DIST.DIST_MMS_MSG WHERE MSGKEY = #{id}
+	</if>
+	</if>
+ </delete>
+  
+</mapper>

@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.msgform.MsgFormDao">
+
+<!-- 해피콜, 본부양식 조회 건수 -->
+	<select id="getMMSMsgFormListCount" resultType="java.lang.Integer">
+		SELECT                         
+		    COUNT(MSG_FORM_NO) AS CNT  
+		FROM                           
+		     KIUPSMS.MMS_FORMBEST              
+		
+		WHERE                          
+        	MSG_FORM_CLCD = #{msgFormClcd}    
+        	<if test=" msgFormCate != null and msgFormCate != '' ">
+		    	AND trim(MSG_FORM_CATE) = #{msgFormCate}     
+		    </if>
+	</select>
+
+<!-- 해피콜, 본부양식 조회 리스트 -->  
+  <select id="getMMSMsgFormList" resultType="com.ibk.msg.web.msgform.MsgFormSearchCondition">
+		SELECT                                                 
+		    MSG_FORM_NO,                                       
+		    MSG_FORM_CLCD,                                     
+		    MSG_FORM_TIT,                                      
+		    MSG_FORM_CTS,                                      
+		    MSG_FORM_CATE,                                     
+		    MSG_FILE_PATH,                                     
+		    MSG_FILE_SIZ                                       
+		FROM (                                                 
+			SELECT                                         
+			    CEIL(ROWNUM / #{perPage}) AS PAGE,  
+			    MSG_FORM_NO,                               
+			    MSG_FORM_CLCD,                             
+			    MSG_FORM_TIT,                              
+			    MSG_FORM_CTS,                              
+			    MSG_FORM_CATE,                      
+			    MSG_FILE_PATH,                      
+			    MSG_FILE_SIZ                        
+			FROM (                                  
+				SELECT                          
+					MSG_FORM_NO,                
+					MSG_FORM_CLCD,              
+					MSG_FORM_TIT,                      
+					MSG_FORM_CTS,                      
+					MSG_FORM_CATE,                     
+					MSG_FILE_PATH,                     
+					MSG_FILE_SIZ                       
+				FROM                              
+					KIUPSMS.MMS_FORMBEST                     
+				
+				WHERE                                  
+					MSG_FORM_CLCD = #{msgFormClcd}
+	        		<if test=" msgFormCate != null and msgFormCate != '' ">
+	    				AND trim(MSG_FORM_CATE) = #{msgFormCate}        
+		    		</if>         
+					
+				ORDER BY                               
+					MSG_FORM_NO DESC                   
+			)                                              
+		)                                                    
+		WHERE                                                
+		    PAGE = #{currentPage}                                        
+  </select>
+
+<!-- 부서서식함 조회 리스트 건수-->  
+	<select id="getMMSMyMsgListCount" resultType="java.lang.Integer">
+		SELECT                        
+		    COUNT(MY_MSG_DATE) AS CNT 
+		FROM                          
+		    KIUPSMS.MMS_FORMBU        
+		WHERE                         
+		    BO_CODE = #{boCode}               
+	</select>
+
+<!-- 부서서식함 조회 리스트 -->
+	<select id="getMMSMyMsgList" resultType="com.ibk.msg.web.msgform.MsgFormSearchCondition">
+		SELECT                                                 
+		    TO_CHAR(MY_MSG_DATE, 'YYYYMMDDHH24MISS') AS MY_MSG_DATE_KEY,                            
+		    TO_CHAR(MY_MSG_DATE, 'YYYY-MM-DD HH24:MI') AS MY_MSG_DATE,                                
+		    BO_CODE,                                           
+		    MY_MSG_TITLE,                                      
+		    MY_MSG_CTS,                             
+		    FILE_PATH,                        
+		    FILE_SIZ                                
+		FROM 
+			(                                                 
+		        SELECT                                         
+		            CEIL(ROWNUM /#{perPage}) AS PAGE,  
+		            MY_MSG_DATE,                               
+		            BO_CODE,                                   
+		            MY_MSG_TITLE,                     
+		            MY_MSG_CTS,                       
+		            FILE_PATH,                        
+		            FILE_SIZ                          
+		        FROM
+		        	(                                
+			                SELECT                        
+			                    MY_MSG_DATE,              
+			                    BO_CODE,                          
+			                    MY_MSG_TITLE,                     
+			                    MY_MSG_CTS,                       
+			                    FILE_PATH,                        
+			                    FILE_SIZ                          
+			                FROM                                  
+			                    KIUPSMS.MMS_FORMBU                
+			                WHERE                                 
+			                    BO_CODE = #{boCode}                        
+			                ORDER BY                              
+			                    MY_MSG_DATE DESC                  
+					)                                             
+			)                                                     
+		WHERE                                                 
+			PAGE = #{currentPage}                                            
+	</select>
+
+<!-- 개인서식함 조회 리스트 건수-->  
+	<select id="getMMSMyListCount" resultType="java.lang.Integer">
+		SELECT COUNT (*) AS CNT  
+		FROM KIUPSMS.MMS_FORMMY
+		WHERE EMPNO = #{emplId}          
+	</select>
+	
+<!-- 개인서식함 조회 리스트 -->  
+	<select id="getMMSMyList" resultType="com.ibk.msg.web.msgform.MsgFormSearchCondition">
+		SELECT 
+			CATEGORYCD                                                                                     
+			,EMPBRCD AS BO_CODE                                                                           
+			,EMPNO AS EMPL_ID
+			,FORMCD AS FORM_CD
+			,FORMNM AS MY_MSG_TITLE
+			,FMSBODY AS MY_MSG_CTS
+			,TO_CHAR (TO_DATE (FMSUPDATE, 'YYYYMMDDHH24MISS'), 'YYYYMMDDHH24MISS') AS MY_MSG_DATE_KEY       
+			,TO_CHAR (TO_DATE (FMSUPDATE, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD HH24:MI:SS') AS MY_MSG_DATE 
+			,FMSFORMUSE                                                                                     
+			,FMSADVER                                                                              
+			,SEQ                                                                                   
+			,FILE_PATH AS MSG_FILE_PATH
+			,FILE_SIZ AS MSG_FILE_SIZ
+		FROM 
+			(
+				SELECT 
+					CEIL (ROWNUM /#{perPage}) AS PAGE                                     
+					,CATEGORYCD                                                                    
+					,EMPBRCD                                                                       
+					,EMPNO                                                                         
+					,FORMCD                                                                        
+					,FORMNM                                                                        
+					,FMSBODY                                                                       
+					,FMSUPDATE                                                                     
+					,FMSFORMUSE                                                                    
+					,FMSADVER                                                                      
+					,SEQ                                                                           
+					,FILE_PATH                                                                      
+					,FILE_SIZ                                                                       
+				FROM 
+					(
+						SELECT   
+							CATEGORYCD                                                         
+							,EMPBRCD                                                                      
+							,EMPNO                                                                        
+							,FORMCD                                                                       
+							,FORMNM                                                                       
+							,FMSBODY                                                                      
+							,FMSUPDATE                                                            
+							,FMSFORMUSE                                                           
+							,FMSADVER                                                             
+							,SEQ                                                                  
+							,FILE_PATH                                                            
+							,FILE_SIZ                                                             
+						FROM 
+							KIUPSMS.MMS_FORMMY                                                   
+						WHERE 
+							EMPNO = #{emplId}                                                                
+							AND FMSFORMUSE = 'Y'                                                     
+		                ORDER BY 
+		                	FMSUPDATE DESC
+					)
+			)                                                     
+		WHERE 
+			PAGE = #{currentPage}                                                                                              
+	</select>
+	
+	
+<!-- 개인서식함으로 이동 추가 -->
+    <insert id="addMMSMyMsg">
+		INSERT INTO KIUPSMS.MMS_FORMMY    
+        (
+        	EMPNO                
+           ,SEQ                  
+           ,FORMNM               
+           ,FMSBODY              
+           ,FMSUPDATE            
+           ,FMSFORMUSE           
+           ,FMSADVER             
+           ,FILE_PATH            
+           ,FILE_SIZ             
+       	)                     
+	     VALUES 
+	     (
+	     	#{emplId}                    
+           	, (
+           			SELECT
+           	        	NVL (MAX (seq), 0) + 1             
+		            FROM 
+		            	(SELECT EMPNO, SEQ FROM KIUPSMS.MMS_FORMMY WHERE EMPNO = #{emplId} ORDER BY SEQ DESC) a                            
+	               	WHERE 
+	               		empno = #{emplId}                          
+		           		AND ROWNUM = 1
+		  	  )          
+            ,#{myMsgTitle}                        
+            ,#{myMsgCts}              
+            ,TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')         
+            ,'Y'                      
+            ,'Y'                      
+            ,#{msgFilePath}                        
+            ,#{msgFileSiz}                        
+		)                         
+  </insert>
+
+<!-- 부서서식함 메세지 추가 -->
+	<insert id="addMMSMyMsgInfo">
+		INSERT INTO KIUPSMS.MMS_FORMBU 
+		(   
+		    MY_MSG_DATE        
+		    ,BO_CODE            
+		    ,MY_MSG_TITLE       
+		    ,MY_MSG_CTS        
+		    ,FILE_PATH    
+		    ,FILE_SIZ            
+		) 
+		VALUES 
+		(              
+		    SYSDATE            
+		    ,#{boCode}                  
+		    ,#{myMsgTitle}                  
+		    ,#{myMsgCts}                  
+		    ,#{msgFilePath}                
+		    ,#{msgFileSiz}                 
+		)                       
+  </insert>
+
+
+<!-- 부서서식함 삭제 -->
+	<delete id="delMMSMyMsgList" >
+		DELETE FROM                                           
+			KIUPSMS.MMS_FORMBU                                
+		WHERE                                                 
+			BO_CODE = #{boCode}                                   
+			AND MY_MSG_DATE = TO_DATE(#{seq}, 'YYYYMMDDHH24MISS')  
+	</delete>
+	
+<!-- 개인서식함 삭제 -->
+	<delete id="deleteMMSMyMsg" >
+		DELETE FROM 
+			KIUPSMS.MMS_FORMMY
+		WHERE 
+			EMPNO = #{emplId}    
+			AND SEQ = #{seq}      
+	</delete>
+	
+</mapper>

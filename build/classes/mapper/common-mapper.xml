@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.common.CommonDao">
+	
+	<!-- 공통코드 조회 -->
+	<select id="selectCodeList" resultType="com.ibk.msg.web.manage.Code">
+		SELECT a.GROUP_CO_CD
+			   , a.CMMN_CD
+			   , a.ORDR
+			   , a.CD_VALUE
+			   , a.DSPLY_NM
+			   , a.USE_YN
+			   , a.REG_YMS
+			   , a.REG_EMPL_ID
+		  FROM DACOM_DIST.TB_CMC_MNG005C a
+		 WHERE USE_YN = 'Y'
+		   AND a.CMMN_CD = #{cmmnCd}
+		 ORDER BY a.ORDR ASC
+	</select>
+	
+</mapper>

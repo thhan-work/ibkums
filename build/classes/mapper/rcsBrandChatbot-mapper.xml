@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.rcsBrand.RcsBrandChatbotDao">
+	<sql id="RCS_BRAND_CHATBOT">
+		SELECT 
+				BR_ID
+				,CHATBOT_ID
+				,SUB_NUM
+				,SUB_TITLE
+				,DISPLAY
+				,RCS_REPLY
+				,MAINNUM_YN
+				,STATUS
+				,GRP_ID
+				,APPR_YMD
+				,APPR_RESULT
+				,APPR_REASON
+				,REG_USER_ID
+				,( SELECT EMPL_NAME FROM   KIUPSMS.EMPLOYEE_INFO  WHERE EMPL_ID = CHATBOT.REG_USER_ID ) AS REG_USER_NM
+				,REG_DT
+				,UPDATE_USER_ID
+				,UPDATE_DT
+		FROM   DACOM_DIST.RCS_BRAND_CHATBOT CHATBOT
+		WHERE	BR_ID      = #{brId} 
+			<if test="chatbotId != null">
+		     	  AND CHATBOT_ID = #{chatbotId}
+		     </if>
+		     <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+		     	<choose>
+	                <when test="searchWordType eq 'subTitle' ">
+	                    AND SUB_TITLE like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'callNum' ">
+	                	AND CHATBOT_ID like '%' || #{searchWord} || '%'
+	                </when>
+	            </choose>
+		     
+		     </if>
+		ORDER BY REG_DT DESC
+	</sql>
+	
+
+	<!-- RCS 템플릿 관리 조회 Count SQL -->
+	<select id="findRcsBrandChatbotTotalCount" resultType="java.lang.Integer">
+	/* com.ibk.msg.web.rcsBrand.RcsBrandChatbotDao.findRcsBrandChatbotTotalCount 챗붓 갯수 조회 */
+		SELECT COUNT(*) FROM (
+		<include refid="RCS_BRAND_CHATBOT" />
+		)
+	</select>
+
+	<!-- RCS 템플릿 관리 조회 SQL -->
+	<select id="findRcsBrandChatbot" resultType="com.ibk.msg.web.rcsBrand.RcsBrandChatbot">
+		/* com.ibk.msg.web.rcsBrand.RcsBrandChatbotDao.findRcsBrandChatbot 챗붓 조회 */
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.header" />
+		</if>
+			<include refid="RCS_BRAND_CHATBOT" />
+		<if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+			<include refid="PaginationMapper.bottom" />
+		</if>
+	</select>
+
+	<insert id="insert" parameterType="map">
+    /* com.ibk.msg.web.rcsBrand.RcsBrandChatbotDao.insert 챗붓 등록 */
+     INSERT INTO DACOM_DIST.RCS_BRAND_CHATBOT
+     ( 
+        BR_ID
+		,CHATBOT_ID
+		,SUB_NUM
+		,SUB_TITLE
+		,DISPLAY
+		,RCS_REPLY
+		,MAINNUM_YN
+		,STATUS
+		,GRP_ID
+		,APPR_YMD
+		,APPR_RESULT
+		,APPR_REASON
+		,REG_USER_ID
+		,REG_DT
+		,UPDATE_USER_ID
+		,UPDATE_DT    
+     ) VALUES (
+     	#{brId}
+		, #{chatbotId}
+		, #{subNum}
+		, #{subTitle}
+		, #{display}
+		, #{rcsReply}
+		, #{mainnumYn}
+		, #{status}
+		, #{grpId}
+		, TO_DATE( REGEXP_REPLACE( #{apprYmd}, '-',''), 'YYYYMMDDHH24MISS')
+		, #{apprResult}
+		, #{apprReason}
+		, #{regUserId}
+		, TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+		, #{updateUserId}
+		, #{updateDt}
+    )
+    </insert>
+    
+    <update id="update"  parameterType="map">
+        /* com.ibk.msg.web.rcsBrand.RcsBrandChatbotDao.update 챗붓 수정 */
+    	UPDATE DACOM_DIST.RCS_BRAND_CHATBOT
+    	   SET 
+    	   		BR_ID           = #{brId}                               
+				,CHATBOT_ID     = #{chatbotId}                          
+				,SUB_NUM        = #{subNum}                             
+				,SUB_TITLE      = #{subTitle}                           
+				,DISPLAY        = #{display}                            
+				,RCS_REPLY      = #{rcsReply}                           
+				,MAINNUM_YN     = #{mainnumYn}                          
+				,STATUS         = #{status}                             
+				,GRP_ID         = #{grpId}  
+				,APPR_YMD       = TO_DATE( REGEXP_REPLACE( #{apprYmd}, '-',''), 'YYYYMMDDHH24MISS')                            
+				,APPR_RESULT    = #{apprResult}                         
+				,APPR_REASON    = #{apprReason}                         
+				,UPDATE_USER_ID = #{updateUserId}                       
+				,UPDATE_DT      = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')                           
+    	       	     
+	     WHERE BR_ID      = #{brId} 
+	       AND CHATBOT_ID = #{chatbotId} 
+    </update>     
+    
+    <update id="delete"  parameterType="map">
+        /* com.ibk.msg.web.rcsBrand.RcsBrandChatbotDao.delete 챗붓 삭제 */
+        DELETE 
+        	FROM DACOM_DIST.RCS_BRAND_CHATBOT  
+        	WHERE BR_ID  = #{brId} 
+        		AND CHATBOT_ID = #{chatbotId}
+    </update>     
+    
+</mapper>

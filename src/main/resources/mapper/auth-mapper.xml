@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.auth.AuthDao">
+
+	<!-- 권한 조회 -->
+	<select id="selectAuthList" resultType="com.ibk.msg.web.auth.AuthMgmtList">
+		/* com.ibk.msg.web.auth.AuthDao.selectAuthList */
+       	SELECT AUTH_ID 		
+			   , AUTH_NM 		
+			   , AUTH_INST 	
+		  FROM DACOM_DIST.TB_AUTH_MGMT
+		ORDER BY REG_YMS DESC              
+	</select>
+	
+	<!-- 권한 정보 조회 -->
+	<select id="selectAuthInfo" resultType="com.ibk.msg.web.auth.AuthMgmtList">
+		/* com.ibk.msg.web.auth.AuthDao.selectAuthInfo */
+       	SELECT AUTH_ID 		
+			   , AUTH_NM 		
+			   , AUTH_INST 	
+		  FROM DACOM_DIST.TB_AUTH_MGMT
+		  <where>
+		 	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(authId)">
+			   AND AUTH_ID = #{authId}
+			</if> 
+		  </where>		 
+	</select>
+	
+	<!-- 해당직원의 권한 조회 -->
+	<select id="selectEmpAuthList" resultType="com.ibk.msg.web.auth.AuthMgmtList">
+		/* com.ibk.msg.web.auth.AuthDao.selectEmpAuthList */
+       	SELECT t1.AUTH_ID 		
+			   , t1.AUTH_NM 		
+			   , t1.AUTH_INST 	
+			   , t2.EMPL_ID
+			   , NVL2(t2.EMPL_ID, 'Y', 'N') AS AUTH_GRANT_YN
+		  FROM DACOM_DIST.TB_AUTH_MGMT t1
+	 LEFT JOIN DACOM_DIST.TB_AUTH_GRANT t2 ON (t1.AUTH_ID = t2.AUTH_ID AND t2.EMPL_ID = #{infoEmplId})  
+		ORDER BY t1.REG_YMS DESC              
+	</select>
+  	
+  	<!-- 권한 부여 등록 -->
+	<insert id="insertAuthGrant" parameterType="com.ibk.msg.web.auth.TAuthGrant">
+	  /* com.ibk.msg.web.auth.AuthDao.insertAuthGrant */
+	   INSERT INTO DACOM_DIST.TB_AUTH_GRANT
+	   ( 
+		  AUTH_ID
+	    , EMPL_ID
+	    , REG_ID
+	    , REG_YMS
+	   ) VALUES (
+	   	  #{authId}   
+	    , #{emplId}   
+	 	, #{regId}
+	 	, TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+	   )
+	</insert>
+	
+   <!-- 부여된 권한 삭제 -->
+	<delete id="deleteAuthGrant">
+		/* com.ibk.msg.web.auth.AuthDao.deleteAuthGrant */
+		DELETE 
+		  FROM DACOM_DIST.TB_AUTH_GRANT
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(emplId)">
+			   AND EMPL_ID = #{emplId}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(authId)">
+			   AND AUTH_ID = #{authId}
+			</if>
+		</where>
+	</delete>
+	
+	<!-- 해당 직원의 부여된 권한 조회  -->
+	<select id="getEmplId" resultType="com.ibk.msg.web.auth.TAuthGrant">
+		/* com.ibk.msg.web.auth.AuthDao.getEmplId */
+		SELECT EMPL_ID
+		  FROM DACOM_DIST.TB_AUTH_GRANT
+		 WHERE EMPL_ID = #{emplId}
+		 <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(authId)">
+		   AND AUTH_ID = #{authId}
+		 </if>
+	</select>
+	
+	<!-- 권한 사용자 공통 쿼리 -->
+	<sql id="AUTHUSER">
+		SELECT D.*
+               , EI.EMPL_NAME
+			   , PART.BO_CODE
+			   , NVL(PART.PART_NAME, '-') AS PART_NAME
+			   , NVL(PO.POSITION_CALLNAME, '-') AS POSITION_CALLNAME
+			   , (
+			       SELECT EMP.EMPL_NAME
+				     FROM KIUPSMS.EMPLOYEE_INFO EMP
+				    WHERE EMP.EMPL_ID = D.REG_ID
+			   ) AS REG_NAME
+			   , (
+			       SELECT EMP.EMPL_NAME
+				     FROM KIUPSMS.EMPLOYEE_INFO EMP
+				    WHERE EMP.EMPL_ID = D.AUTH_GRANT_ID
+			   ) AS AUTH_GRANT_REG_NAME
+          FROM (
+			  	SELECT C.*
+			      FROM (
+			    		SELECT A.EMPL_ID
+			                   , A.REG_ID
+			                   , A.REG_YMS
+			                   , COUNT(B.EMPL_ID) OVER(PARTITION BY B.EMPL_ID) AS AUTH_CNT
+			                   , RANK() OVER (PARTITION BY A.EMPL_ID ORDER BY B.REG_YMS DESC, B.AUTH_ID DESC) RNK
+			                   , B.REG_ID AS AUTH_GRANT_ID
+			                   , B.REG_YMS AS AUTH_GRANT_YMS
+			              FROM DACOM_DIST.TB_AUTH_USER A
+			         LEFT JOIN DACOM_DIST.TB_AUTH_GRANT B ON A.EMPL_ID = B.EMPL_ID
+	              ) C
+                 WHERE C.RNK = 1
+          ) D 
+    INNER JOIN KIUPSMS.EMPLOYEE_INFO EI ON (D.EMPL_ID = EI.EMPL_ID)
+	LEFT OUTER JOIN KIUPSMS.PART_INFO PART ON (EI.BO_CODE = PART.BO_CODE)
+	LEFT OUTER JOIN KIUPSMS.EMPLOYEE_POSITION_INFO PO ON (EI.EMPL_POSITION = PO.POSITION_CODE)
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(infoEmplId)">
+				AND D.EMPL_ID = #{infoEmplId}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEmplId)">
+				AND D.EMPL_ID LIKE '%'|| #{searchEmplId} || '%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(emplNm)">
+				AND EI.EMPL_NAME LIKE '%'|| #{emplNm} || '%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+					<if test='dateType == "regYms"'>
+					  AND D.REG_YMS  BETWEEN #{searchStartDt} || '000000' AND #{searchEndDt} || '235959' 
+					</if>
+					<if test='dateType == "authGrantYms"'>
+					  AND D.AUTH_GRANT_YMS  BETWEEN #{searchStartDt} || '000000' AND #{searchEndDt} || '235959' 
+					</if>
+				</if>
+			</if>
+		</where>
+	  ORDER BY D.AUTH_GRANT_YMS DESC NULLS LAST
+	</sql>
+	
+	<!-- 권한 사용자 건수 조회 -->
+	<select id="selectAuthUserTotalCount" resultType="java.lang.Integer">
+		/* com.ibk.msg.web.auth.AuthDao.selectAuthUserTotalCount */
+		SELECT COUNT(1)                       
+	      FROM ( 
+				<include refid="AUTHUSER"/> 
+		)
+	</select>
+	
+	<!-- 권한 사용자 목록 조회 -->
+	<select id="selectAuthUserList" resultType="com.ibk.msg.web.auth.TAuthUser">
+		/* com.ibk.msg.web.auth.AuthDao.selectAuthUserList */
+		<include refid="PaginationMapper.header"/>
+        <include refid="AUTHUSER"/>
+        <include refid="PaginationMapper.bottom"/>
+	</select>
+	
+	<!-- 권한 사용자 조회 -->
+	<select id="selectAuthUser" resultType="com.ibk.msg.web.auth.TAuthUser">
+		/* com.ibk.msg.web.auth.AuthDao.selectAuthUser */
+		<include refid="AUTHUSER"/>
+	</select>
+	
+	<sql id="AUTHEMPLOYEE">
+		SELECT EM.EMPL_NAME
+	           , EM.EMPL_POSITION
+	           , EM.BO_CODE
+	           , EM.EMPL_ID
+	           , NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+	           , NVL(PA.PART_NAME,'-') AS PART_NAME
+         FROM KIUPSMS.EMPLOYEE_INFO EM
+   LEFT OUTER JOIN KIUPSMS.EMPLOYEE_POSITION_INFO PO ON (EM.EMPL_POSITION = PO.POSITION_CODE) 
+   LEFT OUTER JOIN KIUPSMS.PART_INFO PA ON (EM.BO_CODE = PA.BO_CODE) 
+       <where>
+	       	<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEmplId)">
+	            EM.EMPL_ID LIKE '%'|| #{searchEmplId} || '%'
+	        </if>
+       </where>
+     ORDER BY EM.BO_CODE ASC, EM.EMPL_POSITION DESC
+	</sql>
+	
+	<!-- 전체 직원  건수 조회 -->
+	<select id="selectAuthEmpTotalCount" resultType="java.lang.Integer">
+		/* com.ibk.msg.web.auth.AuthDao.selectAuthEmpTotalCount */
+		SELECT COUNT(1)                       
+	      FROM ( 
+				<include refid="AUTHEMPLOYEE"/> 
+		)
+	</select>
+	
+	<!-- 전체 직원 조회 -->
+	<select id="selectAuthEmpList" resultType="com.ibk.msg.web.auth.TAuthUser">
+		/* com.ibk.msg.web.auth.AuthDao.selectAuthEmpList */
+		<include refid="PaginationMapper.header"/>
+        <include refid="AUTHEMPLOYEE"/>
+        <include refid="PaginationMapper.bottom"/>
+	</select>
+	
+	<!-- 권한 사용자 등록 -->
+	<insert id="insertAuthUser">
+	  /* com.ibk.msg.web.auth.AuthDao.insertAuthUser */
+	   INSERT INTO DACOM_DIST.TB_AUTH_USER
+	   ( 
+	    EMPL_ID
+	    , REG_ID
+	    , REG_YMS
+	   ) VALUES (
+	   	  #{emplId}   
+	    , #{regId}   
+	 	, TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+	   )
+	</insert>
+	
+	<!-- 권한 사용자 삭제 -->
+	<delete id="deleteAuthUser">
+		/* com.ibk.msg.web.auth.AuthDao.deleteAuthUser */
+		DELETE 
+		  FROM DACOM_DIST.TB_AUTH_USER
+		 WHERE EMPL_ID = #{emplId} 
+	</delete>
+</mapper>

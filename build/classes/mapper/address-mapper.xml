@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.address.AddressDao">
+   <sql id="xgroupColumns">
+    	GRP_SEQ, GROUP_NAME, GROUP_NOTE, LEVEL_CD, PGRP_SEQ, GROUP_SHARE_YN, BO_CODE,EMPL_ID
+  </sql>
+  <!--주소록 리스트  시작 -->
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT COUNT(GRP_SEQ) FROM DACOM_DIST.XGROUP
+    <where> 
+    	<if test="addressType == 'group'">
+		    	EMPL_ID = #{emplId} OR (GROUP_SHARE_YN = 1 AND BO_CODE = #{boCode})
+	    </if>
+	    <if test="addressType == 'personal'">
+	    		EMPL_ID = #{emplId}
+	    </if>
+	    <if test="addressType == 'share'">
+	    		GROUP_SHARE_YN = 1 <!-- AND EMPL_ID != #{emplId} --> AND BO_CODE = #{boCode}
+	    </if>
+    </where>
+  </select>
+  
+  <select id="findAddress" resultType="com.ibk.msg.web.address.Address">
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+		SELECT
+	   		  <include refid="xgroupColumns"/>,
+	          (SELECT COUNT (*) FROM DACOM_DIST.XGROUP_CONTACT WHERE GRP_SEQ = a.GRP_SEQ AND EMPL_ID = a.EMPL_ID) contactCount,
+	          NVL ((SELECT EMPL_NAME FROM KIUPSMS.EMPLOYEE_INFO WHERE a.EMPL_ID = EMPL_ID), '공용') owner
+		FROM 
+			  DACOM_DIST.XGROUP a
+     	<where>
+			<if test="addressType == 'group'">
+			   	EMPL_ID = #{emplId} OR (GROUP_SHARE_YN = 1 AND BO_CODE = #{boCode})
+			 </if>
+			 <if test="addressType == 'personal'">
+			   	EMPL_ID = #{emplId}
+			 </if>
+			 <if test="addressType == 'share'">
+			   	GROUP_SHARE_YN = 1 AND BO_CODE = #{boCode}
+			 </if>
+			 <if test="addressType == 'add'">
+			   	EMPL_ID = #{emplId} AND GROUP_SHARE_YN = 1 AND BO_CODE = #{boCode}
+			 </if>
+     	</where>
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  <!--주소록 리스트  끝 -->
+  <!-- 주소록 그룹추가 맥스 시퀀스 채번 시작 -->
+	<select id="findGroupMaxSequnce" resultType="java.lang.Integer">
+	  	SELECT /*+ index_desc(a XGROUP_PK) */ NVL (MAX (grp_seq), 0) + 1  AS group_seq             
+						FROM DACOM_DIST.XGROUP a WHERE EMPL_ID = #{emplId}
+	</select>
+  <!-- 주소록 그룹추가 맥스 시퀀스 채번 끝 -->
+  <!-- 주소록 그룹추가 시작  -->
+  	<insert id="add">
+		INSERT INTO DACOM_DIST.XGROUP
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="emplId != null">EMPL_ID,</if>
+			<if test="grpSeq != null">GRP_SEQ,</if>
+			<if test="groupName != null">GROUP_NAME,</if>
+			<if test="groupNote != null">GROUP_NOTE,</if>
+			<if test="groupShareYn != null">GROUP_SHARE_YN,</if>
+			<if test="boCode != null">BO_CODE,</if>
+		</trim>           
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="emplId != null">#{emplId},</if>                                         
+			<if test="grpSeq != null">#{grpSeq},</if>
+			<if test="groupName != null">#{groupName},</if>
+			<if test="groupNote != null">#{groupNote},</if>
+			<if test="groupShareYn != null">#{groupShareYn},</if>
+			<if test="boCode != null">#{boCode},</if>
+		</trim>          
+  	</insert>
+  <!-- 주소록 그룹추가 끝  -->
+  <!-- 주소록 그룹수정 시작  -->
+	<update id="addressModify">
+	    UPDATE DACOM_DIST.XGROUP
+		    <set>
+		        <if test="grpSeq != null">GRP_SEQ = #{grpSeq},</if>
+		        <if test="groupName != null">GROUP_NAME = #{groupName},</if>
+		        <if test="groupNote != null">GROUP_NOTE = #{groupNote},</if>
+		        <if test="groupShareYn != null">GROUP_SHARE_YN = #{groupShareYn},</if>
+		        <if test="boCode != null">BO_CODE = #{boCode},</if>
+		    </set>
+		    <where>
+		        <if test="emplId != null and emplId != ''">
+		            AND EMPL_ID = #{emplId}
+		        </if>
+		        <if test="grpSeq != null and grpSeq != ''">
+		            AND GRP_SEQ = #{grpSeq}
+		        </if>
+		    </where>
+	</update>
+  <!-- 주소록 그룹수정 끝  -->
+  <!-- 주소록 연락처 관계 삭제 시작  -->
+	<delete id="deleteGroupContact" >
+		DELETE FROM DACOM_DIST.XGROUP_CONTACT 
+		WHERE 
+				EMPL_ID = #{emplId}
+				AND GRP_SEQ = #{grpSeq}
+			<if test="catSeq != null and catSeq != ''">
+				AND CAT_SEQ = #{catSeq}
+			</if>
+	</delete>
+  <!-- 주소록 연락처 관계 삭제 끝  -->
+  <!-- 연락처 삭제 시작  -->
+	<delete id="deleteContactInGroup" >
+		DELETE FROM DACOM_DIST.XCONTACT a                               
+		WHERE 
+				(EMPL_ID, CAT_SEQ) 	IN 
+				(
+				  SELECT 
+							EMPL_ID, CAT_SEQ FROM DACOM_DIST.XGROUP_CONTACT 
+				  WHERE 
+				 			GRP_SEQ = #{grpSeq} AND 
+				 			EMPL_ID = #{emplId}
+				 )
+	</delete>
+  <!-- 연락처 삭제 끝  -->
+  <!-- 주소록 삭제 시작  -->
+	<delete id="deleteGroup">
+		DELETE FROM DACOM_DIST.XGROUP 
+		WHERE
+				EMPL_ID = #{emplId} AND
+				GRP_SEQ = #{grpSeq}
+	</delete> 
+  <!-- 주소록 삭제 끝  -->
+  <!-- 주소록 그룹 정보 단건 시작  -->
+    <select id="getGroupInfo" resultType="com.ibk.msg.web.address.Address">
+        SELECT 
+        	<include refid="xgroupColumns"/>
+        FROM DACOM_DIST.XGROUP
+    	WHERE 
+    		EMPL_ID = #{emplId}  
+       		AND GRP_SEQ = #{grpSeq}
+       	<if test="addressType == 'share'">
+       		AND BO_CODE = #{boCode}
+       		AND GROUP_SHARE_YN = 1 
+       	</if>
+    </select>
+  <!-- 주소록 그룹 정보 단건 끝  -->
+  <!-- 주소록 특정 그룹 연락처 리스트 총건수(페이징) 시작 -->
+  	<select id="getContactCount"  resultType="java.lang.Integer">
+    	SELECT 
+    		COUNT(gc.CAT_SEQ)
+      	FROM 
+      		DACOM_DIST.XGROUP_CONTACT gc
+        JOIN 
+        	DACOM_DIST.XCONTACT c ON gc.EMPL_ID = c.EMPL_ID AND gc.CAT_SEQ = c.CAT_SEQ
+     	WHERE 
+     		gc.EMPL_ID = #{emplId}
+       		AND 
+       		gc.GRP_SEQ = #{grpSeq}
+  	</select>
+  <!-- 주소록 특정 그룹 연락처 리스트 총건수(페이징) 끝 -->
+  
+  <!-- 주소록 그룹 연락처 목록 단건 정보 시작  -->
+  	<select id="getContactItem" resultType="com.ibk.msg.web.address.Contact">
+		SELECT 
+			EMPL_ID, CAT_SEQ, FIRST_NAME, MIDDLE_NAME, LAST_NAME, NICKNAME, SOCIAL_NO, SEX, BIRTHDAY, YINYANG,
+            E_MAIL1, E_MAIL2, MOBILE, HOME_ZIP, HOME_STATE, HOME_ADDR1, HOME_ADDR2, HOME_PHONE, HOME_FAX,
+            VOCATION, COMPANY, DEPARTMENT, TITLE, COM_ZIP, COM_STATE, COM_ADDR1, COM_ADDR2, COM_PHONE, COM_FAX, COM_WWW,
+            PE_WWW, WEDDING_DATE, HOBBY, DM_ADDR, REMARK, CONTACT_SHARE_YN
+        FROM 
+        	DACOM_DIST.XCONTACT
+        WHERE 
+        			EMPL_ID = #{emplId}
+            AND CAT_SEQ = #{catSeq}
+	</select>
+  <!-- 주소록 그룹 연락처 목록 단건 정보 끝  -->
+  <!-- 주소록 그룹 연락처 목록 연락처 추가를 위한 MAX catSeq 채번 시작 -->
+    <select id="getContactMaxSeqCnt" resultType="int">
+    	SELECT 
+    		/*+ index_desc(a XCONTACT_PK) */
+            NVL (MAX (CAT_SEQ), 0) + 1
+        FROM 
+        	DACOM_DIST.XCONTACT a 
+        WHERE 
+        		   EMPL_ID = #{emplId} 
+   </select> 
+  <!-- 주소록 그룹 연락처 목록 연락처 추가를 위한 MAX catSeq 채번 끝 -->
+  <!-- 주소록 그룹 연락처 목록 연락처 추가 시작 -->
+  <insert id="insertContact" >
+		INSERT INTO 
+			DACOM_DIST.XCONTACT
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+		  <if test="emplId != null">EMPL_ID,</if>			
+		  <if test="catSeq != null">CAT_SEQ,</if>			
+		  <if test="firstName != null">FIRST_NAME,</if>			
+		  <if test="middleName != null">MIDDLE_NAME,</if>			
+		  <if test="lastName != null">LAST_NAME,</if>			
+		  <if test="nickname != null">NICKNAME,</if>			
+		  <if test="socialNo != null">SOCIAL_NO,</if>			
+		  <if test="sex != null">SEX,</if>			
+		  <if test="birthday != null">BIRTHDAY,</if>			
+		  <if test="yinyang != null">YINYANG,</if>			
+		  <if test="eMail1 != null">E_MAIL1,</if>			
+		  <if test="eMail2 != null">E_MAIL2,</if>			
+		  <if test="mobile != null">MOBILE,</if>			
+		  <if test="homeZip != null">HOME_ZIP,</if>			
+		  <if test="homeState != null">HOME_STATE,</if>			
+		  <if test="homeAddr1 != null">HOME_ADDR1,</if>			
+		  <if test="homeAddr2 != null">HOME_ADDR2,</if>			
+		  <if test="homePhone != null">HOME_PHONE,</if>			
+		  <if test="homeFax != null">HOME_FAX,</if>			
+		  <if test="vocation != null">VOCATION,</if>			
+		  <if test="company != null">COMPANY,</if>			
+		  <if test="department != null">DEPARTMENT,</if>			
+		  <if test="title != null">TITLE,</if>			
+		  <if test="comZip != null">COM_ZIP,</if>			
+		  <if test="comState != null">COM_STATE,</if>			
+		  <if test="comAddr1 != null">COM_ADDR1,</if>			
+		  <if test="comAddr2 != null">COM_ADDR2,</if>			
+		  <if test="comPhone != null">COM_PHONE,</if>			
+		  <if test="comFax != null">COM_FAX,</if>			
+		  <if test="comWww != null">COM_WWW,</if>			
+		  <if test="peWww != null">PE_WWW,</if>			
+		  <if test="weddingDate != null">WEDDING_DATE,</if>			
+		  <if test="hobby != null">HOBBY,</if>			
+		  <if test="dmAddr != null">DM_ADDR,</if>			
+		  <if test="remark != null">REMARK,</if>			
+		  <if test="contactShareYn != null">CONTACT_SHARE_YN,</if>			
+		  <if test="regdate != null">REGDATE</if>
+		</trim>			
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+          <if test="emplId != null">#{emplId},</if>            
+          <if test="catSeq != null">#{catSeq},</if>            
+          <if test="firstName != null">#{firstName},</if>          
+          <if test="middleName != null">#{middleName},</if>            
+          <if test="lastName != null">#{lastName},</if>            
+          <if test="nickname != null">#{nickname},</if>         
+          <if test="socialNo != null">#{socialNo},</if>            
+          <if test="sex != null">#{sex},</if>          
+          <if test="birthday != null">#{birthday},</if>         
+          <if test="yinyang != null">#{yinyang},</if>           
+          <if test="eMail1 != null">#{eMail1},</if>           
+          <if test="eMail2 != null">#{eMail2},</if>            
+          <if test="mobile != null">#{mobile},</if>         
+          <if test="homeZip != null">#{homeZip},</if>          
+          <if test="homeState != null">#{homeState},</if>          
+          <if test="homeAddr1 != null">#{homeAddr1},</if>          
+          <if test="homeAddr2 != null">#{homeAddr2},</if>          
+          <if test="homePhone != null">#{homePhone},</if>          
+          <if test="homeFax != null">#{homeFax},</if>          
+          <if test="vocation != null">#{vocation},</if>         
+          <if test="company != null">#{company},</if>           
+          <if test="department != null">#{department},</if>         
+          <if test="title != null">#{title},</if>           
+          <if test="comZip != null">#{comZip},</if>            
+          <if test="comState != null">#{comState},</if>            
+          <if test="comAddr1 != null">#{comAddr1},</if>            
+          <if test="comAddr2 != null">#{comAddr2},</if>            
+          <if test="comPhone != null">#{comPhone},</if>            
+          <if test="comFax != null">#{comFax},</if>            
+          <if test="comWww != null">#{comWww},</if>            
+          <if test="peWww != null">#{peWww},</if>          
+          <if test="weddingDate != null">#{weddingDate},</if>          
+          <if test="hobby != null">#{hobby},</if>           
+          <if test="dmAddr != null">#{dmAddr},</if>           
+          <if test="remark != null">#{remark},</if>         
+          <if test="contactShareYn != null">#{contactShareYn},</if>           
+          <if test="regdate != null">#{regdate}</if>
+        </trim>
+	</insert>
+  <!-- 주소록 그룹 연락처 목록 연락처 추가 끝-->
+  <!-- 주소록 그룹 연락처 목록 연락처-그룹 관계 추가 시작 -->
+   <insert id="insertGroupContact">
+		INSERT INTO 
+			DACOM_DIST.XGROUP_CONTACT
+    	<trim prefix="(" suffix=")" suffixOverrides=",">
+      		<if test="emplId != null">EMPL_ID,</if>           
+        	<if test="grpSeq != null">GRP_SEQ,</if>         
+      		<if test="catSeq != null">CAT_SEQ</if>
+    	</trim>     
+    	<trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="emplId != null">#{emplId},</if>           
+            <if test="grpSeq != null">#{grpSeq},</if>           
+            <if test="catSeq != null">#{catSeq}</if>            
+   		</trim>
+    </insert>
+  <!-- 주소록 그룹 연락처 목록 연락처-그룹 관계 추가 끝    -->
+  <!-- 주소록 그룹 연락처 목록 연락처 수정 시작-->
+   <update id="updateContact" >
+		UPDATE DACOM_DIST.XCONTACT
+		<set>
+			<if test="emplId != null">EMPL_ID = #{emplId},</if>
+			<if test="catSeq != null">CAT_SEQ = #{catSeq},</if>
+			<if test="firstName != null">FIRST_NAME = #{firstName},</if>
+			<if test="middleName != null">MIDDLE_NAME = #{middleName},</if>
+			<if test="lastName != null">LAST_NAME = #{lastName},</if>
+			<if test="nickname != null">NICKNAME = #{nickname},</if>
+			<if test="socialNo != null">SOCIAL_NO = #{socialNo},</if>
+			<if test="sex != null">SEX = #{sex},</if>
+			<if test="birthday != null">BIRTHDAY = #{birthday},</if>
+			<if test="yinyang != null">YINYANG = #{yinyang},</if>
+			<if test="eMail1 != null">E_MAIL1 = #{eMail1},</if>
+			<if test="eMail2 != null">E_MAIL2 = #{eMail2},</if>
+			<if test="mobile != null">MOBILE = #{mobile},</if>
+			<if test="homeZip != null">HOME_ZIP = #{homeZip},</if>
+			<if test="homeState != null">HOME_STATE = #{homeState},</if>
+			<if test="homeAddr1 != null">HOME_ADDR1 = #{homeAddr1},</if>
+			<if test="homeAddr2 != null">HOME_ADDR2 = #{homeAddr2},</if>
+			<if test="homePhone != null">HOME_PHONE = #{homePhone},</if>
+			<if test="homeFax != null">HOME_FAX = #{homeFax},</if>
+			<if test="vocation != null">VOCATION = #{vocation},</if>
+			<if test="company != null">COMPANY = #{company},</if>
+			<if test="department != null">DEPARTMENT = #{department},</if>
+			<if test="title != null">TITLE = #{title},</if>
+			<if test="comZip != null">COM_ZIP = #{comZip},</if>
+			<if test="comState != null">COM_STATE = #{comState},</if>
+			<if test="comAddr1 != null">COM_ADDR1 = #{comAddr1},</if>
+			<if test="comAddr2 != null">COM_ADDR2 = #{comAddr2},</if>
+			<if test="comPhone != null">COM_PHONE = #{comPhone},</if>
+			<if test="comFax != null">COM_FAX = #{comFax},</if>
+			<if test="comWww != null">COM_WWW = #{comWww},</if>
+			<if test="peWww != null">PE_WWW = #{peWww},</if>
+			<if test="weddingDate != null">WEDDING_DATE = #{weddingDate},</if>
+			<if test="hobby != null">HOBBY = #{hobby},</if>
+			<if test="dmAddr != null">DM_ADDR = #{dmAddr},</if>
+			<if test="remark != null">REMARK = #{remark},</if>
+			<if test="contactShareYn != null">CONTACT_SHARE_YN = #{contactShareYn},</if>
+			<if test="regdate != null">REGDATE = #{regdate},</if>
+		</set>
+				WHERE EMPL_ID = #{emplId}
+				AND CAT_SEQ = #{catSeq}
+    </update>
+  <!-- 주소록 그룹 연락처 목록 연락처 수정 끝-->
+  <!-- 주소록 그룹 연락처 목록 연락처 그룹이동 시작-->
+    <update id="moveContact"  >
+        UPDATE DACOM_DIST.XGROUP_CONTACT
+        <set>
+            <if test="targetGrpSeq != null">GRP_SEQ = #{targetGrpSeq}</if>
+        </set>                 
+            WHERE GRP_SEQ = #{grpSeq} AND CAT_SEQ = #{catSeq} AND EMPL_ID = #{emplId}
+    </update>
+  <!-- 주소록 그룹 연락처 목록 연락처 그룹이동 끝-->
+  <!-- 주소록 그룹 연락처 삭제-주소록 그룹 연락처 목록 시작  -->
+    <delete id="deleteContact" >
+		DELETE FROM DACOM_DIST.XCONTACT WHERE EMPL_ID = #{emplId} AND CAT_SEQ = #{catSeq}
+    </delete>  
+  <!-- 주소록 그룹 연락처 삭제-주소록 그룹 연락처 목록 끝  -->
+  <!-- 주소록 파일 등록 임시 저장 시작  -->
+  	<insert id="insertAddressFileInfo" >
+        INSERT INTO WEBMAIL.FILE_DATA_TEMP
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+          <if test="uniquekey != null">uniquekey</if> 
+            <if test="cno != null">,cno</if>          
+            <if test="name != null">,name</if>         
+            <if test="email != null">,email</if>        
+            <if test="mobile != null">,mobile</if>
+            <if test="department != null">,department</if>       
+            <if test="fax != null">,fax</if>          
+            <if test="msg1 != null">,msg1</if>          
+            <if test="msg2 != null">,msg2</if>          
+            <if test="msg3 != null">,msg3</if>          
+                      
+        </trim>         
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+          <if test="uniquekey != null">#{uniquekey}</if> 
+          <if test="cno != null">,#{cno}</if> 
+          <if test="name != null">,#{name}</if> 
+          <if test="email != null">,#{email}</if> 
+          <if test="mobile != null">,#{mobile}</if> 
+          <if test="department != null">,#{department}</if>
+          <if test="fax != null">,#{fax}</if>
+          <if test="msg1 != null">,#{msg1}</if>
+          <if test="msg2 != null">,#{msg2}</if>
+          <if test="msg3 != null">,#{msg3}</if> 
+        </trim>                
+    </insert>
+  <!-- 주소록 파일 등록 임시 저장 끝     -->
+  <!-- 주소록 파일 등록 임시 저장 데이터 가져오기 시작  -->
+   <select id="getFileDataList" resultType="com.ibk.msg.web.address.Contact">
+   		SELECT 
+   			NAME AS FIRST_NAME,
+   			EMAIL AS E_MAIL1,
+   			MOBILE, 
+   			FAX AS HOME_FAX,
+   			DEPARTMENT
+   		FROM
+   			WEBMAIL.FILE_DATA_TEMP
+   		WHERE
+   			UNIQUEKEY = #{uniqueKey}
+   </select>
+  <!-- 주소록 파일 등록 임시 저장 데이터 가져오기 끝  -->
+  
+  <!-- 일반보내기 주소록 그룹호출 시작  -->
+    <select id="callAddress" resultType="com.ibk.msg.web.address.Address">
+		SELECT
+	   		  <include refid="xgroupColumns"/>,
+	          (SELECT COUNT (*) FROM DACOM_DIST.XGROUP_CONTACT WHERE GRP_SEQ = a.GRP_SEQ AND EMPL_ID = a.EMPL_ID) contactCount,
+	          NVL ((SELECT EMPL_NAME FROM KIUPSMS.EMPLOYEE_INFO WHERE a.EMPL_ID = EMPL_ID), '공용') owner
+		FROM 
+			  DACOM_DIST.XGROUP a
+     	<where>
+			<if test="addressType == 'group'">
+			   	EMPL_ID = #{emplId} OR (GROUP_SHARE_YN = 1 AND BO_CODE = #{boCode})
+			 </if>
+			 <if test="addressType == 'personal'">
+			   	EMPL_ID = #{emplId}
+			 </if>
+			 <if test="addressType == 'share'">
+			   	GROUP_SHARE_YN = 1 AND BO_CODE = #{boCode}
+			 </if>
+			 <if test="addressType == 'add'">
+			   	EMPL_ID = #{emplId} AND GROUP_SHARE_YN = 1 AND BO_CODE = #{boCode}
+			 </if>
+     	</where>
+  	</select>
+  <!-- 일반보내기 주소록 그룹호출 끝  -->
+  <!-- 일반보내기 부서정보 호출 시작  -->
+  	<select id="getPartList" resultType="com.ibk.msg.web.address.Address">
+  		SELECT 
+  				BO_CODE, PART_NAME FROM KIUPSMS.PART_INFO 
+  			WHERE
+  				D_FLAG = '0' ORDER BY PART_NAME
+  	</select>
+  <!-- 일반보내기 부서정보 호출 끝  -->
+   <sql id="xcontactColumns1">
+    c.EMPL_ID,c.CAT_SEQ, FIRST_NAME, MIDDLE_NAME, LAST_NAME, NICKNAME, SOCIAL_NO, SEX, BIRTHDAY, YINYANG,
+    E_MAIL1, E_MAIL2,  MOBILE, HOME_ZIP, HOME_STATE, 
+    HOME_ADDR1, HOME_ADDR2, HOME_PHONE, HOME_FAX, VOCATION, COMPANY, DEPARTMENT, TITLE, COM_ZIP, COM_STATE,
+    COM_ADDR1, COM_ADDR2, COM_PHONE, COM_FAX, COM_WWW, PE_WWW, WEDDING_DATE, HOBBY, DM_ADDR, REMARK, 
+    CONTACT_SHARE_YN,gc.GRP_SEQ
+  </sql>
+  <!-- 일반보내기 주소록 개인-특정 연락처 호출 시작 -->
+  <select id="getContactList"  resultType="com.ibk.msg.web.address.Contact">
+    <if test="currentPage !=null and currentPage !=0 and perPage !=null and perPage !=0 ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+		SELECT 
+			<include refid="xcontactColumns1"/>
+        FROM DACOM_DIST.XGROUP_CONTACT gc
+            JOIN DACOM_DIST.XCONTACT c 
+        ON 
+        	gc.EMPL_ID = c.EMPL_ID AND gc.CAT_SEQ = c.CAT_SEQ
+     	WHERE										
+     													 gc.EMPL_ID = #{emplId}
+               <if test="grpSeq != null">	AND gc.GRP_SEQ = #{grpSeq}</if>
+               <if test="faxYn != null">		AND c.HOME_FAX IS NOT NULL</if>
+               <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+				<choose>
+					<when test="searchWordType eq 'name' ">
+				  		AND c.FIRST_NAME like '%'|| #{searchWord} || '%'
+					</when>
+					<when test="searchWordType eq 'phone' ">
+						AND c.MOBILE like '%'|| #{searchWord} || '%'
+					</when>
+				</choose>
+			   </if>
+               
+    <if test="currentPage !=null and currentPage !=0 and perPage !=null and perPage !=0 ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  <!-- 일반보내기 주소록 개인-특정 연락처 호출 시작 -->
+  <select id="getContactListHash"  resultType="java.util.Map">
+    <if test="currentPage !=null and currentPage !=0 and perPage !=null and perPage !=0 ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+		SELECT 
+			<include refid="xcontactColumns1"/>
+        FROM DACOM_DIST.XGROUP_CONTACT gc
+            JOIN DACOM_DIST.XCONTACT c 
+        ON 
+        	gc.EMPL_ID = c.EMPL_ID AND gc.CAT_SEQ = c.CAT_SEQ
+     	WHERE										
+     													 gc.EMPL_ID = #{emplId}
+               <if test="grpSeq != null">	AND gc.GRP_SEQ = #{grpSeq}</if>
+               <if test="faxYn != null">		AND c.HOME_FAX IS NOT NULL</if>
+               <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+				<choose>
+					<when test="searchWordType eq 'name' ">
+				  		AND c.FIRST_NAME like '%'|| #{searchWord} || '%'
+					</when>
+					<when test="searchWordType eq 'phone' ">
+						AND c.MOBILE like '%'|| #{searchWord} || '%'
+					</when>
+				</choose>
+			   </if>
+               
+    <if test="currentPage !=null and currentPage !=0 and perPage !=null and perPage !=0 ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  <!-- 일반보내기 주소록 개인 연락처 호출 끝 -->
+  <sql id="xcontactColumns2">
+    c.ID_DOMAIN, c.CAT_SEQ, FIRST_NAME, MIDDLE_NAME, LAST_NAME, NICKNAME, SOCIAL_NO, SEX, BIRTHDAY, YINYANG,
+    E_MAIL1, E_MAIL2, MOBILE, HOME_ZIP, HOME_STATE, HOME_ADDR1, HOME_ADDR2, HOME_PHONE, HOME_FAX,
+    VOCATION, COMPANY, DEPARTMENT, TITLE, COM_ZIP, COM_STATE, COM_ADDR1, COM_ADDR2, COM_PHONE, COM_FAX, COM_WWW,
+    PE_WWW, WEDDING_DATE, HOBBY, DM_ADDR, REMARK, CONTACT_SHARE_YN<!-- ,REGDATE -->
+  </sql>  
+  <!-- 일반보내기 주소록 부서 연락처 호출 시작 -->
+  <select id="getGroupContactList" resultType="com.ibk.msg.web.address.Contact">
+	 SELECT 
+	 		<include refid="xcontactColumns2"/>
+	 FROM 
+	 		DACOM_DIST.XGROUP_CONTACT gc, 
+	 		DACOM_DIST.XCONTACT c, 
+	 		DACOM_DIST.XGROUP g
+	 WHERE 1=1
+	         AND gc.EMPL_ID = c.EMPL_ID 
+	         AND gc.CAT_SEQ = c.CAT_SEQ
+	         AND gc.EMPL_ID = g.EMPL_ID         
+	         AND gc.grp_seq = g.grp_seq
+	         AND c.EMPL_ID = g.EMPL_ID 
+	         AND g.GROUP_SHARE_YN = 1 
+	         AND g.EMPL_ID != #{emplId} 
+	         AND g.BO_CODE = #{boCode}
+		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+		 <choose>
+		  <when test="searchWordType eq 'name' ">
+			AND c.FIRST_NAME like '%'|| #{searchWord} || '%'
+		  </when>
+		  <when test="searchWordType eq 'phone' ">
+			AND c.MOBILE like '%'|| #{searchWord} || '%'
+		  </when>
+		 </choose>
+		</if>
+  </select>
+  <!-- 일반보내기 주소록 부서 연락처 호출 끝 -->
+  <!-- 일반보내기 주소록 특정 부서 연락처 호출 시작 -->
+  <select id="getPartAddressList" resultType="com.ibk.msg.web.address.Contact">
+	 SELECT 
+	 		EMPL_NAME AS FIRST_NAME, EMPL_HP_NO  AS MOBILE
+	 FROM 
+	 		KIUPSMS.EMPLOYEE_INFO
+	 WHERE 1=1
+	 		<if test="@org.apache.commons.lang3.StringUtils@isEmpty(searchWordType)">
+	 			AND	BO_CODE=#{boCode}
+	 		</if>
+	 			AND	EMPL_HP_NO IS NOT NULL 
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+				<choose>
+					<when test="searchWordType eq 'name' ">
+				  		AND EMPL_NAME like '%'|| #{searchWord} || '%'
+					</when>
+					<when test="searchWordType eq 'phone' ">
+						AND EMPL_HP_NO like '%'|| #{searchWord} || '%'
+					</when>
+				</choose>
+			</if>
+	 			ORDER BY EMPL_NAME
+  </select>
+  <!-- 일반보내기 주소록 특정 부서 연락처 호출 끝 --> 
+  <!-- 일반보내기 주소록 특정 부서 연락처 호출 시작 -->
+  <select id="getPartAddressListForAuthGrant" resultType="com.ibk.msg.web.address.Contact">
+	 SELECT 
+	 		EMPL_NAME 	AS FIRST_NAME
+	 	  , EMPL_HP_NO  AS MOBILE
+	 	  , EMPL_ID  	AS emplId
+	 FROM 
+	 		KIUPSMS.EMPLOYEE_INFO
+	 WHERE 1=1
+	 		<if test="@org.apache.commons.lang3.StringUtils@isEmpty(searchWordType)">
+	 			AND	BO_CODE=#{boCode}
+	 		</if>
+	 			AND	EMPL_HP_NO IS NOT NULL 
+			<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+				<choose>
+					<when test="searchWordType eq 'name' ">
+				  		AND EMPL_NAME like '%'|| #{searchWord} || '%'
+					</when>
+					<when test="searchWordType eq 'phone' ">
+						AND EMPL_HP_NO like '%'|| #{searchWord} || '%'
+					</when>
+				</choose>
+			</if>
+	 			ORDER BY EMPL_NAME
+  </select>
+  <!-- 일반보내기 주소록 특정 부서 연락처 호출 끝 -->  
+</mapper>

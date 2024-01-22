@@ -1,0 +1,834 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.smssendlist.SmsSendListDao">
+  
+  <sql id="SMSSENDLIST">
+	
+	SELECT      
+				T21.group_co_cd as groupCoCd,
+				T21.group_uniq_no  as groupUniqNo,
+				T21.batch_tagt_uniq_no  as batchTagtUniqNo,
+				T21.bzwk_chnl_cd  as bzwkChnlCd,
+				T21.bzwk_idnfr   as bzwkIdnfr,
+				T21.tmpt_uniq_no  as tmptUniqNo,
+				T21.group_nm  as groupNm, 
+				T21.msg_dstic  as msgDstic, 
+				T21.approval_yn  as approvalYn, 
+				T21.prcss_stus_dstic  as prcssStusDstic,
+				T21.requests_number  as requestsNumber, 
+				T21.send_prity_dstic  as sendPrityDstic, 
+				T21.pengag_yms  as pengagYms,
+				T21.expire_schedule_yms  as expireScheduleYms, 
+				T21.send_start_yms  as sendStartYms, 
+				T21.send_expire_yms  as sendExpireYms, 
+				T21.send_progress_number  as sendProgressNumber,
+				T21.schedule_dstic  as scheduleDstic,
+				T21.test_yn  as testYn,
+				T21.inst  as inst,
+				T21.recv_refusal_yn  as recvRefusalYn,
+				T21.reg_yms  as regYms,
+				T21.reg_emp_no  as regEmpNo,
+				T21.send_empid  as sendEmpid,
+				T21.send_brncd  as sendBrncd,
+				T21.sndr_telno  as sndrTelno,
+				T21.sndr_no_address  as sndrNoAddress,
+				T21.recv_no_address  as recvNoAddress,
+				T21.filter_limit_yn  as filterLimitYn,
+				T21.test_no  as testNo,
+				T21.recv_no_var  as recvNoVar,
+				T21.progress_step as progressStep,
+				T21In.send_type as sendType,
+				T21In.censor_id as censorId,
+				T21In.budget_nm as budgetNm,
+				T21In.modify_reason as modifyReason,
+				T21In.stop_reason as stopReason,
+				T21In.msg_ctnt as  msgCtnt,
+				T21In.ums_msg_ctnt as umsMsgCtnt,
+				T21In.replace_variable_val as replaceVariableVal,
+				nvl(T28.sendCount,0) AS sendCount,
+				T21In.seq1,
+				T21In.seq2,
+				T21In.seq3,
+				PART.PART_NAME as partName,
+				EMP.EMPL_NAME as emplName
+			FROM  
+				DACOM_DIST.TB_CMC_DRF002M T21
+			LEFT JOIN 	
+				DACOM_DIST.TB_CMC_DRF002D T21In
+			ON
+				T21.group_uniq_no = T21In.group_uniq_no
+			LEFT JOIN (
+					SELECT
+						BATCH_TAGT_UNIQ_NO,
+						count(batch_tagt_uniq_no) AS sendCount
+					FROM
+						DACOM_DIST.TB_CMC_DRF003D
+					WHERE
+						group_co_cd ='IBK'
+					AND	
+						SEND_STUS_DSTIC = '2'
+					GROUP BY BATCH_TAGT_UNIQ_NO
+			) T28
+			ON
+				T21.batch_tagt_uniq_no = T28.batch_tagt_uniq_no
+			LEFT JOIN 
+				KIUPSMS.EMPLOYEE_INFO EMP
+            ON 
+            	T21.REG_EMP_NO = EMP.EMPL_ID
+            LEFT JOIN 
+            	KIUPSMS.PART_INFO PART
+            ON 
+            	EMP.BO_CODE = PART.BO_CODE		
+			<where> 
+				T21.SCHEDULE_DSTIC = 'W'
+				<if test='userClass != "A"'>
+					AND T21.REG_EMP_NO = #{emplId}
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+						<if test='dateType == "regDate"'>
+						  AND  T21.reg_yms  BETWEEN #{searchStartDt} || '000000' AND #{searchEndDt} || '235959' 
+						</if>
+						<if test='dateType == "sendDate"'>
+						  AND  T21.send_expire_yms  BETWEEN #{searchStartDt} || '000000' AND #{searchEndDt} || '235959' 
+						</if>
+					</if>
+				</if>
+			    <if test="draftName != null and draftName !=''">
+				   AND T21.group_nm LIKE '%' || #{draftName} || '%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(draftStatus)">
+					<if test="draftStatus !='all'">
+					   AND T21.prcss_stus_dstic =#{draftStatus}
+					</if>
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+					<if test="messageType !='all'">
+						<choose>
+							<when test="messageType == 'message'">
+								<if test="messageTypeDetail == 'SM'">
+									AND msg_dstic = 'SM'
+								</if>
+								<if test="messageTypeDetail == 'LM'">
+									AND msg_dstic = 'LM'
+								</if>
+								<if test="messageTypeDetail == 'MM'">
+									AND msg_dstic = 'MM'
+								</if>
+								<if test="messageTypeDetail == 'all'">
+									AND msg_dstic IN ('SM', 'LM', 'MM')
+								</if>
+							</when>
+							<when test="messageType == 'kakao'">
+								AND msg_dstic = 'KM'
+							</when>
+							<when test="messageType == 'rcs'">
+								<if test="messageTypeDetail == 'SR'">
+									AND msg_dstic = 'SR'
+								</if>
+								<if test="messageTypeDetail == 'LR'">
+									AND msg_dstic = 'LR'
+								</if>
+								<if test="messageTypeDetail == 'MR'">
+									AND msg_dstic = 'MR'
+								</if>
+								<if test="messageTypeDetail == 'DT'">
+									AND msg_dstic = 'DT'
+								</if>
+								<if test="messageTypeDetail == 'FT'">
+									AND msg_dstic = 'FT'
+								</if>
+								<if test="messageTypeDetail == 'all'">
+									AND msg_dstic IN ('SR', 'LR', 'MR', 'DT', 'FT')
+								</if>
+							</when>
+						</choose>
+					</if>
+				</if>
+				<if test="partNm != null and partNm !=''">
+				   AND PART.PART_NAME LIKE '%' || #{partNm} || '%'
+				</if>
+				<if test="regNm != null and regNm !=''">
+				   AND EMP.EMPL_NAME LIKE '%' || #{regNm} || '%'
+				</if>
+			</where>
+			ORDER BY regYms DESC
+				
+  </sql>
+  
+ 
+
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(groupUniqNo) AS CNT                             
+    FROM ( 
+          <include refid="SMSSENDLIST"/> 
+     )
+  </select>
+  
+  <select id="findSmsSendList" resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+          <include refid="SMSSENDLIST"/>                 
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  <select id="findDetail" resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+    SELECT T21.group_co_cd as groupCoCd,
+		   T21.group_uniq_no  as groupUniqNo,
+		   T21.batch_tagt_uniq_no  as batchTagtUniqNo,
+		   T21.bzwk_chnl_cd  as bzwkChnlCd,
+		   T21.bzwk_idnfr   as bzwkIdnfr,
+		   T21.tmpt_uniq_no  as tmptUniqNo,
+		   T21.group_nm  as groupNm, 
+		   T21.msg_dstic  as msgDstic, 
+		   T21.approval_yn  as approvalYn, 
+		   T21.prcss_stus_dstic  as prcssStusDstic,
+		   T21.requests_number  as requestsNumber, 
+		   T21.send_prity_dstic  as sendPrityDstic, 
+		   T21.pengag_yms  as pengagYms,
+		   T21.expire_schedule_yms  as expireScheduleYms, 
+		   T21.send_start_yms  as sendStartYms, 
+		   T21.send_expire_yms  as sendExpireYms, 
+		   T21.send_progress_number  as sendProgressNumber,
+		   T21.schedule_dstic  as scheduleDstic,
+		   T21.test_yn  as testYn,
+		   T21.inst  as inst,
+		   T21.recv_refusal_yn  as recvRefusalYn,
+		   T21.reg_yms  as regYms,
+		   T21.reg_emp_no  as regEmpNo,
+		   T21.send_empid  as sendEmpid,
+		   T21.send_brncd  as sendBrncd,
+		   T21.sndr_telno  as sndrTelno,
+		   T21.sndr_no_address  as sndrNoAddress,
+		   T21.recv_no_address  as recvNoAddress,
+		   T21.filter_limit_yn  as filterLimitYn,
+		   T21.test_no  as testNo,
+		   T21.recv_no_var  as recvNoVar,
+		   T21In.send_type as sendType,
+		   T21In.censor_id as censorId, 
+		   T21In.budget_nm as budgetNm,
+		   T21In.modify_reason as modifyReason,
+		   T21In.stop_reason as stopReason,
+		   T21In.image_count as  imageCount,
+		   T21In.success_count as  successCountNumber,
+		   T21In.error_count as  errorCountNumber,
+		   T21In.target_file_path as  targetFilePath,
+		   T21In.msg_ctnt as  msgCtnt,
+		   T21In.ums_msg_ctnt as umsMsgCtnt,
+		   T21In.replace_variable_val as replaceVariableVal,
+		   T21In.seq1,
+		   T21In.seq2,
+		   T21In.seq3,
+		   T21.RECEIVE_AGREE_CHECK_YN as receiveAgreeCheckYn,
+		   T21.DUPLICATE_CHECK_YN as duplicateCheckYn,
+		   T21In.ALT_MSG_DIV as altMsgDiv,
+		   T21In.ALT_MSG_TITLE as altMsgTitle,
+		   T21In.ALT_MSG_TEXT as altMsgText,
+		   T21IN.KKO_TMPL_CD,
+		   T21IN.CHANNEL_TMPL_ID,
+           T21IN.CHANNEL_MSG_STANDARD,
+           T21IN.CHANNEL_MSG_TEXT,
+           T21IN.CHANNEL_BUTTON_TEXT,
+           T21IN.CHANNEL_OPTION_TEXT,
+           KKO.TMPL_NM,
+           KKO.TMPL_MSG,
+           KKO.BTN_INFO		
+	   FROM DACOM_DIST.TB_CMC_DRF002M T21
+ INNER JOIN DACOM_DIST.TB_CMC_DRF002D T21IN ON (T21.GROUP_UNIQ_NO = T21IN.GROUP_UNIQ_NO)
+  LEFT JOIN DACOM_DIST.TB_KKO_TMPL KKO ON (T21IN.KKO_TMPL_CD = KKO.KKO_TMPL_CD)
+      WHERE T21.group_uniq_no = #{groupUniqNo}
+  </select>
+  
+  <delete id="remove">
+  DELETE 
+  	FROM DACOM_DIST.TB_CMC_DRF002M  
+  WHERE 
+  	GROUP_UNIQ_NO = #{groupUniqNo}
+  </delete>
+  
+  <update id="saveT21" >
+  UPDATE  
+  	DACOM_DIST.TB_CMC_DRF002M
+  SET 
+  	group_co_cd = #{groupCoCd},
+    batch_tagt_uniq_no = #{groupUniqNo}, 
+    bzwk_idnfr = #{bzwkIdnfr},
+    tmpt_uniq_no = #{groupUniqNo}, 
+    group_nm = #{groupNm}, 
+    msg_dstic = #{msgDstic}, 
+    prcss_stus_dstic = #{prcssStusDstic}, 
+    requests_number = #{requestsNumber}, 
+    pengag_yms = #{pengagYms}, 
+    send_progress_number = #{sendProgressNumber}, 
+    inst = #{inst}, 
+    sndr_telno = #{sndrTelno} 
+   WHERE
+   	group_uniq_no = #{groupUniqNo}
+  </update>
+  
+  <update id="saveInst" >
+  UPDATE  
+  	DACOM_DIST.TB_CMC_DRF002M
+  SET 
+    inst = #{inst}
+    ,msg_dstic = #{msgDstic}
+    ,REQUESTS_NUMBER = #{requestsNumber}
+   WHERE
+   	group_uniq_no = #{groupUniqNo}
+  </update>
+  
+  <delete id="removeT21_INFO">
+	  DELETE 
+	  	FROM DACOM_DIST.TB_CMC_DRF002D  
+	  WHERE 
+	  	GROUP_UNIQ_NO = #{groupUniqNo}
+  </delete>
+  
+  <update id="saveInfo" >
+	UPDATE 
+		DACOM_DIST.TB_CMC_DRF002D
+	SET
+		SEND_TYPE = #{sendType}
+		,MSG_CTNT = #{msgCtnt}
+		,UMS_MSG_CTNT = #{umsMsgCtnt}
+		,BUDGET_NM = #{budgetNm}
+		,CENSOR_ID = #{censorId}
+		,MODIFY_REASON = #{modifyReason}
+		,REPLACE_VARIABLE_VAL = #{replaceVariableVal}
+		<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(targetFilePath)">
+           	<choose>
+           		<!-- 값이 del 일 경우 Null로 업데이트 (이미 등록된 파일명 삭제)   *equalsIgnoreCase() 대소문자 구분 X -->
+           		<when test="targetFilePath.equalsIgnoreCase('del')">
+					,TARGET_FILE_PATH = NULL
+           		</when>
+           		<otherwise>
+					,TARGET_FILE_PATH = #{targetFilePath}
+           		</otherwise>
+           	</choose>
+		</if>
+
+	WHERE
+		GROUP_UNIQ_NO = ${groupUniqNo}
+  </update>
+  
+  <update id='updateStatus'>
+  UPDATE
+  	DACOM_DIST.TB_CMC_DRF002M
+  SET
+  	PRCSS_STUS_DSTIC = #{prcssStusDstic}
+  WHERE
+  	GROUP_UNIQ_NO = #{groupUniqNo} 
+  </update>
+  
+  <select id="selectT30" resultType="java.lang.Integer">
+  SELECT                                                
+    	 COUNT(*) AS CNT                             
+    FROM (
+    	SELECT * 
+    	FROM  
+    		DACOM_DIST.TB_CMC_DRF004M 
+    	WHERE 
+    		GROUP_UNIQ_NO = #{groupUniqNo}
+    )
+  </select>
+  
+  <select id="selectT32" resultType="java.lang.Integer">
+  SELECT                                                
+    	 COUNT(*) AS CNT                             
+    FROM (
+    	SELECT * 
+    	FROM 
+    		DACOM_DIST.TB_CMC_DRF001M 
+    	WHERE 
+    		GROUP_UNIQ_NO = #{groupUniqNo}
+    		AND AGREE_TYPE =#{agreeType}
+    		AND EMPL_ID =#{emplId}
+    )
+  </select>
+  
+  <delete id="removeT30">
+  DELETE 
+  	FROM DACOM_DIST.TB_CMC_DRF004M  
+  WHERE 
+  	GROUP_UNIQ_NO = #{groupUniqNo}
+  
+  </delete>
+  
+  <delete id="removeT32">
+  DELETE 
+  	DACOM_DIST.TB_CMC_DRF001M  
+  WHERE 
+  	GROUP_UNIQ_NO = #{groupUniqNo}
+  
+  </delete>
+  
+    <delete id="deleteT32"  >
+  DELETE 
+  	DACOM_DIST.TB_CMC_DRF001M  
+  WHERE 
+  	GROUP_UNIQ_NO = #{groupUniqNo}
+  	AND AGREE_TYPE =#{agreeType}
+<!--   AND EMPL_ID =#{emplId}	 -->
+  </delete>
+  
+  
+  <!-- T30 저장  -->	
+	<insert id="saveT30" >
+		INSERT INTO DACOM_DIST.TB_CMC_DRF004M
+		(
+			SCHEDULE_UNIQ_NO
+			,GROUP_CO_CD
+			,SCHEDULE_TAGT_DSTIC
+			,GROUP_UNIQ_NO
+			,TAGT_UNIQ_NO
+			,SEND_STUS_DSTIC
+			,BZWK_IDNFR
+			,SCHEDULE_DSTIC
+			,PENGAG_YMS
+			,ALARM_PERIOD_NUMBER
+			,SCHEDULE_OPTN
+			,TOT_NUMBER
+			,SECTION_NUMBER
+			,INTERVAL_TIME
+		)
+		SELECT 
+				KIUPSMS.SQ_UMSSU21_GROUPID.nextval AS SCHEDULE_UNIQ_NO, A.*
+		FROM
+		(
+		<foreach collection="sendDateInfo" item="sendDate" separator="UNION ALL">
+			SELECT			
+				#{sendDate.groupCoCd}				AS GROUP_CO_CD
+				,#{sendDate.scheduleTagtDstic}		AS SCHEDULE_TAGT_DSTIC
+				,#{sendDate.groupUniqNo}			AS GROUP_UNIQ_NO
+				,#{sendDate.groupUniqNo}			AS TAGT_UNIQ_NO
+				,#{sendDate.sendStusDstic}			AS SEND_STUS_DSTIC
+				,#{sendDate.bzwkIdnfr}				AS BZWK_IDNFR
+				,#{sendDate.scheduleDstic}			AS SCHEDULE_DSTIC
+				,#{sendDate.pengagYms}				AS PENGAG_YMS
+				,#{sendDate.alarmPeriodNumber}	AS ALARM_PERIOD_NUMBER
+				,#{sendDate.scheduleOptn}			AS SCHEDULE_OPTN
+				,#{sendDate.totNumber}				AS TOT_NUMBER
+				,#{sendDate.sectionNumber}			AS SECTION_NUMBER
+				,#{sendDate.intervalTime}				AS INTERVAL_TIME
+			FROM
+				DUAL
+		</foreach>
+		)A
+	</insert>
+	
+	<!-- 본인 저장 -->
+	<insert id='inT32'>
+	INSERT INTO 
+		DACOM_DIST.TB_CMC_DRF001M
+		( GROUP_UNIQ_NO
+		  ,EMPL_ID
+		  ,AGREE_TYPE
+		  ,AGREE_STATUS
+		  ,REQUESTS_YMS
+		  ,DRAFTER_NM
+		)
+		VALUES
+		(
+		  #{groupUniqNo},
+		  (SELECT REG_EMP_NO FROM DACOM_DIST.TB_CMC_DRF002M WHERE GROUP_UNIQ_NO = #{groupUniqNo}), 
+		  '4',
+		  'I',
+		  TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS'),
+		  #{emplId}
+		)
+	</insert>
+	
+	<!-- T32 저장  -->	
+	<insert id="saveT32" >
+		INSERT ALL 
+		<foreach collection="confirmEmp" item="confirmData">
+			INTO DACOM_DIST.TB_CMC_DRF001M
+			(
+				GROUP_UNIQ_NO
+				,EMPL_ID
+				,AGREE_TYPE
+				,AGREE_STATUS
+				,REQUESTS_YMS
+				,CONFIRM_YMS
+				,DRAFTER_NM
+			)
+			VALUES
+			(
+				#{confirmData.groupUniqNo}
+				,#{confirmData.emplId}
+				,#{confirmData.agreeType}
+				,#{confirmData.agreeStatus}
+				,TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+				,#{confirmData.confirmYms}
+				,#{confirmData.drafterNm}
+			)
+		</foreach>
+		SELECT * FROM DUAL
+	</insert>
+	
+	<!-- T32 저장  -->	
+	<insert id="insertT32" >
+		<foreach collection="sendConfirmEmp" item="sendConfirmData" open="INSERT ALL" separator="" close="SELECT * FROM DUAL">
+			INTO DACOM_DIST.TB_CMC_DRF001M
+			(
+				GROUP_UNIQ_NO
+				,EMPL_ID
+				,AGREE_TYPE
+				,AGREE_STATUS
+				,REQUESTS_YMS
+				,CONFIRM_YMS
+				,DRAFTER_NM
+			)
+			VALUES
+			(
+				#{sendConfirmData.groupUniqNo}
+				,#{sendConfirmData.emplId}
+				,#{sendConfirmData.agreeType}
+				,#{sendConfirmData.agreeStatus}
+				,TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+				,#{sendConfirmData.confirmYms}
+				,#{sendConfirmData.drafterNm}
+			)
+		</foreach>
+	</insert>
+  
+  <insert id="testSend">
+  <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(msgDstic)">
+  <if test='msgDstic == "SM"'>
+		 INSERT INTO DACOM_DIST.DIST_SMS
+			( TRAN_PR, TRAN_ID, TRAN_PHONE, TRAN_CALLBACK, TRAN_STATUS
+			, TRAN_RSLT, TRAN_DATE, TRAN_MSG, TRAN_TYPE
+			, TRAN_ETC1, TRAN_ETC2, TRAN_ETC3, TRAN_ETC4 )
+		VALUES 
+			(KIUPSMS.MMS_MSG_SEQ.nextval
+			    , #{bzwkIdnfr} 					
+			    , #{recvNoAddress}		 <!-- 테스트 번호 넣기  -->
+				, #{sndrTelno}
+				, '1'		 	<!-- TRAN_STATUS -->
+				, NULL		
+				, SYSDATE		
+				, #{msgCtnt}		
+				, 0			<!-- TRAN_TYPE -->		
+				, NULL										
+				, NULL										
+				, NULL										
+				, NULL										
+							)
+  </if>
+  <if test='msgDstic == "LM"'>
+			INSERT INTO DACOM_DIST.DIST_MMS_MSG
+			( MSGKEY, SUBJECT, PHONE, CALLBACK, STATUS
+			,RSLT , REQDATE, MSG, FILE_CNT, FILE_CNT_REAL
+			, FILE_PATH1, FILE_PATH1_SIZ, EXPIRETIME
+			, ID, COMPKEY )
+		VALUES 
+			(KIUPSMS.MMS_MSG_SEQ.nextval
+			    ,  #{msgCtnt}			
+				, #{recvNoAddress}			
+				, #{sndrTelno}		
+				, '0'			 	<!-- STATUS -->
+				, NULL			
+				, SYSDATE 
+				, #{umsMsgCtnt}				
+				, 0				
+				, 0					<!-- FILE_CNT_REAL -->
+				, NULL			
+				, NULL				
+				, '43200'										
+				, #{bzwkIdnfr}									
+				, #{boCode}		)
+	</if>
+	<if test='msgDstic == "MM"'>
+			INSERT INTO DACOM_DIST.DIST_MMS_MSG_IMG
+			( MSGKEY, SUBJECT, PHONE, CALLBACK, STATUS
+			,RSLT , REQDATE, MSG, FILE_CNT
+			, SEQ1, SEQ2, SEQ3, EXPIRETIME
+			, ID, COMPKEY )
+		VALUES 
+			(KIUPSMS.MMS_MSG_SEQ.nextval
+			    ,  #{msgCtnt}			
+				, #{recvNoAddress}			
+				, #{sndrTelno}		
+				, '0'			 	<!-- STATUS -->
+				, NULL			
+				, SYSDATE   
+				, #{umsMsgCtnt}				
+				, #{fileCnt}				
+				, #{seq1}
+				, #{seq2}			
+				, #{seq3}				
+				, '43200'										
+				, #{bzwkIdnfr}									
+				, #{boCode}	)
+	</if>
+  </if>
+  </insert>
+ 
+  
+  <select id='confirmSelect' resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+	  SELECT
+			A.GROUP_UNIQ_NO
+			,A.AGREE_STATUS
+			,A.AGREE_TYPE	
+	        ,EM.EMPL_NAME
+	        ,EM.EMPL_POSITION
+	        ,EM.BO_CODE
+	        ,EM.EMPL_ID
+	        ,EM.EMPL_CLASS
+	        ,NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+        FROM 
+			DACOM_DIST.TB_CMC_DRF001M A
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_INFO EM
+		ON 
+			A.EMPL_ID = EM.EMPL_ID
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_POSITION_INFO PO
+		ON
+			EM.EMPL_POSITION = PO.POSITION_CODE
+		WHERE
+       		GROUP_UNIQ_NO = #{groupUniqNo}
+       	AND
+       		AGREE_TYPE ='1'
+        ORDER BY EM.EMPL_POSITION DESC
+  </select>
+  
+  
+  <select id='sendConfirmSelect' resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+	 SELECT
+			A.GROUP_UNIQ_NO
+			,A.AGREE_STATUS
+			,A.AGREE_TYPE	
+	        ,EM.EMPL_NAME
+	        ,EM.EMPL_POSITION
+	        ,EM.BO_CODE
+	        ,EM.EMPL_ID
+	        ,EM.EMPL_CLASS
+	        ,EM.EMPL_HP_NO
+	        ,NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+        FROM 
+			DACOM_DIST.TB_CMC_DRF001M A
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_INFO EM
+		ON 
+			A.EMPL_ID = EM.EMPL_ID
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_POSITION_INFO PO
+		ON
+			EM.EMPL_POSITION = PO.POSITION_CODE
+		WHERE
+       		GROUP_UNIQ_NO = #{groupUniqNo}
+       	AND
+       		AGREE_TYPE ='4'
+        ORDER BY EM.EMPL_POSITION DESC
+  </select>
+  
+  
+  <select id='digitalConfirmSelect' resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+	  SELECT
+			A.GROUP_UNIQ_NO
+			,A.AGREE_STATUS
+			,A.AGREE_TYPE	
+	        ,EM.EMPL_NAME
+	        ,EM.EMPL_POSITION
+	        ,EM.BO_CODE
+	        ,EM.EMPL_ID
+	        ,EM.EMPL_CLASS
+	        ,NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+         FROM 
+			DACOM_DIST.TB_CMC_DRF001M A
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_INFO EM
+		ON 
+			A.EMPL_ID = EM.EMPL_ID
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_POSITION_INFO PO
+		ON
+			EM.EMPL_POSITION = PO.POSITION_CODE
+		WHERE
+       		GROUP_UNIQ_NO = #{groupUniqNo}
+       	AND
+       		AGREE_TYPE ='2'
+        ORDER BY EM.EMPL_POSITION DESC
+  </select>
+  
+  <select id='userInfoLevel2' resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+  	SELECT
+  		US.EMPL_ID,
+  		US.USER_LEVEL,
+  		US.EMPL_NAME,
+  		US.EMPL_POSITION,
+  		NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+  	FROM
+  		DACOM_DIST.TB_CMC_MNG001M US
+  	LEFT JOIN
+  		KIUPSMS.EMPLOYEE_POSITION_INFO PO			
+  	ON
+  		US.EMPL_POSITION = PO.POSITION_CODE
+  	WHERE
+  		USER_LEVEL = '2'	 
+  </select>
+  
+  <select id='userInfoLevel3' resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+  	SELECT
+  		US.EMPL_ID,
+  		US.USER_LEVEL,
+  		US.EMPL_NAME,
+  		US.EMPL_POSITION,
+  		NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+  	FROM
+  		DACOM_DIST.TB_CMC_MNG001M US
+  	LEFT JOIN
+  		KIUPSMS.EMPLOYEE_POSITION_INFO PO			
+  	ON
+  		US.EMPL_POSITION = PO.POSITION_CODE
+  	WHERE
+  		USER_LEVEL = '3'	 	
+  </select>
+  
+  
+  <select id='cmsConfirmSelect' resultType="com.ibk.msg.web.smssendlist.SmsSendList">
+	  SELECT
+			A.GROUP_UNIQ_NO
+			,A.AGREE_STATUS
+			,A.AGREE_TYPE	
+	        ,EM.EMPL_NAME
+	        ,EM.EMPL_POSITION
+	        ,EM.BO_CODE
+	        ,EM.EMPL_ID
+	        ,EM.EMPL_CLASS
+	        ,NVL(PO.POSITION_CALLNAME,'-') AS POSITION_CALLNAME
+         FROM 
+			DACOM_DIST.TB_CMC_DRF001M A
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_INFO EM
+		ON 
+			A.EMPL_ID = EM.EMPL_ID
+		LEFT JOIN
+			KIUPSMS.EMPLOYEE_POSITION_INFO PO
+		ON
+			EM.EMPL_POSITION = PO.POSITION_CODE
+		WHERE
+       		GROUP_UNIQ_NO = #{groupUniqNo}
+       	AND
+       		AGREE_TYPE ='3'
+        ORDER BY EM.EMPL_POSITION DESC
+  </select>
+  
+  
+  <select id='agreeSelect' resultType="java.lang.Integer">
+	  SELECT count(*) 
+	FROM 
+		DACOM_DIST.TB_CMC_DRF001M
+	WHERE 
+		group_uniq_no = #{groupUniqNo}
+	AND 
+		agree_type != '4'
+	AND 
+		agree_status = 'I'
+  </select>
+  
+  <select id='selectFourthDisagree' resultType="java.lang.Integer">
+	  SELECT count(*) 
+	FROM 
+		DACOM_DIST.TB_CMC_DRF001M
+	WHERE 
+		group_uniq_no = #{groupUniqNo}
+	AND 
+		agree_type = '4'
+	AND 
+		agree_status = 'I'
+  </select>
+  
+<!-- T26 대상자 처리 완료 여부 확인 -->
+  <select id='selectT26DoneCheck' resultType="java.lang.Integer">
+	SELECT
+	    COUNT(*)
+	FROM
+	    DACOM_DIST.TB_CMC_DRF003M
+	WHERE
+		BATCH_TAGT_UNIQ_NO = #{param1}
+		<if test="param2 != null">
+			AND PRCSS_STUS_DSTIC = #{param2}
+		</if>
+  </select>
+  
+  
+  <select id="sendCount" resultType ="java.lang.Integer">
+  		SELECT 
+  			count(*)
+  		FROM 
+  			DACOM_DIST.TB_CMC_DRF002M T21,
+  			DACOM_DIST.TB_CMC_DRF003D T28
+  		WHERE 
+  			T21.BATCH_TAGT_UNIQ_NO = T28.BATCH_TAGT_UNIQ_NO
+  		AND	
+  			T28.SEND_STUS_DSTIC='2'
+  		AND	
+  			T28.BATCH_TAGT_UNIQ_NO = #{groupUniqNo}
+  </select>
+  
+  <update id="confirmUpdate" >
+  UPDATE  
+  	DACOM_DIST.TB_CMC_DRF001M
+  SET 
+    agree_status = 'G' 
+    ,CONFIRM_YMS = TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+   WHERE
+   	group_uniq_no = #{param1}
+   AND 
+   	empl_id = #{param2}
+   AND
+   	agree_type = '4'	
+  </update>
+  
+  <select id="confirmSelectSatus" resultType="String"> 
+  SELECT agree_status 
+  FROM	
+  	DACOM_DIST.TB_CMC_DRF001M
+  WHERE 
+   	group_uniq_no = #{param1}
+   AND 
+   	empl_id = #{param2}
+   AND
+   	agree_type = '4'	
+  </select>
+  
+  <select id="confirmT21Satus" resultType="String"> 
+  	  SELECT 
+	  	PRCSS_STUS_DSTIC
+	  FROM	
+	  	DACOM_DIST.TB_CMC_DRF002M
+      WHERE
+        GROUP_UNIQ_NO = #{param1}
+  </select>
+  
+  <update id="instDelete">
+  
+  </update>
+  
+  
+	<update id="updateT21EmplID" >
+		UPDATE
+			DACOM_DIST.TB_CMC_DRF002M
+		SET
+			SEND_EMPID = #{sendEmpid}
+			,SEND_BRNCD = #{sendBrncd}
+		WHERE
+			GROUP_UNIQ_NO = ${groupUniqNo}
+	</update>
+	
+	<update id="cancel">
+  	UPDATE 
+  		DACOM_DIST.TB_CMC_DRF002M
+  	SET
+		PRCSS_STUS_DSTIC = 'E'	  
+  	WHERE 
+  		GROUP_UNIQ_NO = #{groupUniqNo}
+	</update>
+</mapper>

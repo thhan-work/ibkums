@@ -1,0 +1,451 @@
+spring:
+  profiles:
+    active: odinue_local
+  http:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  mvc:
+    view:
+      prefix: "/WEB-INF/view/"
+      suffix: ".jsp"
+server:
+  port: 9080
+  context-path: "/"
+# 에러 페이지 설정
+  error:
+    whitelabel:
+      enabled: false
+jasypt:
+  encryptor:
+    bean: jasyptStringEncryptor
+
+
+--- #구분표시
+spring:
+  profiles: odinue_local
+  apservers:
+    - name: AP1
+      url: 13.209.66.82:24049
+      home: /app/m1_ibk/M1std/webapp/webshell/sh/
+    - name: AP2
+      url: 14.63.220.129:24049
+      home: /app/m1_ibk/M1std/webapp/webshell/sh/
+  fileservers:
+    - name: CH1
+      url: 13.209.66.82:24049
+      home: /home/ec2-user/m1/webapp/webshell/sh/
+      rcv: /home/ec2-user/m1/rcv
+      tkm_sh: /home/ec2-user/m1/bin/LSR_EAI.sh
+      tkm_config: /home/ec2-user/m1/config/vela/TKM_FILES
+      tkm_log: /home/ec2-user/m1/logs/LSR_EAI.log
+  loginmode: real
+  http:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  session:
+    store-type: none
+  motpurl: https://motp.ibk.co.kr/ibkotp/otpauth.do
+  webmail:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+#       jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:21521:XE"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:41522:XE"
+        username: "WEBMAIL"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  ibksms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+#       jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:21521:XE"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:41522:XE"
+        username: "IBKSMS"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  kiupsms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+#       jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:21521:XE"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:41522:XE"
+        username: "KIUPSMS"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  wiseu:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        #jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:21521:XE"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:41522:XE"
+        username: "WISEU"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  dacom-dist:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+#       jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:21521:XE"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@221.146.36.121:41522:XE"
+        username: "DACOM_DIST"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+
+--- #구분표시
+spring:
+  profiles: odinue_dev
+  apservers:
+    - name: AP1
+      url: vela.odinue.net:24049
+      home: /app/m1_ibk/M1std/webapp/webshell/sh/
+  fileservers:
+    - name: CH1
+      url: 127.0.0.1:24049
+      home: /home/ec2-user/m1/webapp/webshell/sh/
+      rcv: /home/ec2-user/m1/rcv
+      tkm_sh: /home/ec2-user/m1/bin/TKM_FILES.sh
+      tkm_config: /home/ec2-user/m1/config/vela/TKM_FILES
+      tkm_log: /home/ec2-user/m1/logs/TKM_FILES.log
+  loginmode: test
+  http:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  session:
+    store-type: none
+  motpurl: http://motp.ibk.co.kr/ibkotp/otpauth.do
+  webmail:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@112.216.241.98:21521:XE"
+        username: "WEBMAIL"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  ibksms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@112.216.241.98:21521:XE"
+        username: "IBKSMS"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  kiupsms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@112.216.241.98:21521:XE"
+        username: "KIUPSMS"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  wiseu:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@112.216.241.98:21521:XE"
+        username: "WISEU"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  dacom-dist:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@112.216.241.98:21521:XE"
+        username: "DACOM_DIST"
+        password: ENC(Z9z11AfyflL937bXqGK5XA==)
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+--- #구분표시
+spring:
+  profiles: local
+  apservers:
+    - name: AP1
+      url: 192.168.224.62:24049
+      home: /data/m1/M1std/webapp/webshell/sh/
+    - name: CH1
+      url: 192.168.223.135:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+    - name: WEB1
+      url: 172.18.202.61:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+  fileservers:
+    - name: CH1
+      url: 192.168.223.135:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+      rcv: /home/ftpeai/datafiles2/
+      tkm_sh: /app/m1/M1std/bin/TKM_FILES.sh
+      tkm_config: /app/m1/M1std/config/vela/TKM_FILES
+      tkm_log: /app/m1/M1std/logs/TKM_FILES.log
+  loginmode: real
+  http:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  session:
+    store-type: none
+  motpurl: http://motp.ibk.co.kr/ibkotp/otpauth.do
+  webmail:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        maximum-pool-size: 10
+        pool-name: webmail-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  ibksms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        maximum-pool-size: 10
+        pool-name: ibksms-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  kiupsms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        pool-name: kiupsms-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  wiseu:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        pool-name: wiseu-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  dacom-dist:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        pool-name: dacom-dist-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+
+
+--- #구분표시
+spring:
+  profiles: dev
+  apservers:
+    - name: AP1
+      url: 192.168.224.62:24049
+      home: /data/m1/M1std/webapp/webshell/sh/
+    - name: CH1
+      url: 192.168.223.135:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+    - name: WEB1
+      url: 172.18.202.61:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+  fileservers:
+    - name: CH1
+      url: 192.168.223.135:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+      rcv: /home/ftpeai/datafiles2/
+      tkm_sh: /app/m1/M1std/bin/TKM_FILES.sh
+      tkm_config: /app/m1/M1std/config/vela/TKM_FILES
+      tkm_log: /app/m1/M1std/logs/TKM_FILES.log
+  loginmode: real
+  http:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  session:
+    store-type: none
+  motpurl: http://172.18.119.48:8080/ibkotp/otpauth.do
+  webmail:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        maximum-pool-size: 10
+        pool-name: webmail-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  ibksms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        maximum-pool-size: 10
+        pool-name: ibksms-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  kiupsms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        pool-name: kiupsms-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  wiseu:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        pool-name: wiseu-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  dacom-dist:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@192.168.223.135:1522:ibktest11"
+        username: "dacom_dist"
+        password: "ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)"
+        pool-name: dacom-dist-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+
+--- #구분표시
+spring:
+  profiles: prod
+  apservers:
+    - name: AP1
+      url: 192.168.142.157:24049
+      home: /data/m1/M1std/webapp/webshell/sh/
+    - name: AP2
+      url: 192.168.142.158:24049
+      home: /data/m1/M1std/webapp/webshell/sh/
+    - name: CH1
+      url: 134.100.209.139:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+    - name: WEB1
+      url: 172.18.33.143:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+    - name: WEB2
+      url: 172.18.33.144:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+  fileservers:
+    - name: CH1
+      url: 134.100.209.139:24049
+      home: /app/m1/M1std/webapp/webshell/sh/
+      rcv: /home/ftpeai/datafiles2/
+      tkm_sh: /app/m1/M1std/bin/TKM_FILES.sh
+      tkm_config: /app/m1/M1std/config/vela/TKM_FILES
+      tkm_log: /app/m1/M1std/logs/TKM_FILES.log
+  loginmode: real
+  http:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  session:
+    store-type: none
+  motpurl: http://motp.ibk.co.kr/ibkotp/otpauth.do
+  webmail:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@134.100.204.86:1521/IBK817"
+        username: "dacom_dist"
+        password: ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)
+        maximum-pool-size: 10
+        pool-name: webmail-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  ibksms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@134.100.204.86:1521/IBK817"
+        username: "dacom_dist"
+        password: ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)
+        maximum-pool-size: 10
+        pool-name: ibksms-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  kiupsms:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@134.100.204.86:1521/IBK817"
+        username: "dacom_dist"
+        password: ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)
+        pool-name: kiupsms-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  wiseu:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@134.100.204.86:1521/IBK817"
+        username: "dacom_dist"
+        password: ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)
+        pool-name: wiseu-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2
+  dacom-dist:
+    datasource:
+      hikari:
+        driver-class-name: "net.sf.log4jdbc.sql.jdbcapi.DriverSpy"
+        jdbc-url: "jdbc:log4jdbc:oracle:thin:@134.100.204.86:1521/IBK817"
+        username: "dacom_dist"
+        password: ENC(ZyvYe+xcpuiAFatl8dGwD1E1UEgIU1Rj)
+        pool-name: dacom-dist-prod-cp
+        max-lifetime: 60000
+        connection-test-query: "SELECT 1 FROM DUAL"
+        minimum-idle: 2

@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.confirmlist.ConfirmListDao">
+  
+	<sql id="SMSSENDLIST">
+		SELECT 
+			ROWNUM AS ROW_NUM, A.* 
+		FROM
+		(
+			SELECT
+			    T21.REG_YMS
+			    ,T21.MSG_DSTIC
+			    ,T21.GROUP_NM
+			    ,T21.REQUESTS_NUMBER
+			    ,T21.SEND_BRNCD
+			    ,T21.REG_EMP_NO
+			    ,T21.GROUP_UNIQ_NO
+			    ,T32.AGREE_TYPE
+			    ,DECODE(T21.PRCSS_STUS_DSTIC,'N','N',T32.AGREE_STATUS) AS AGREE_STATUS
+			    ,T32.CONFIRM_YMS
+			    ,(SELECT EMPL_NAME FROM KIUPSMS.EMPLOYEE_INFO WHERE EMPL_ID = T21.REG_EMP_NO) AS EMPL_NAME
+			    ,PT.PART_NAME
+			    ,(SELECT EMPL_NAME FROM KIUPSMS.EMPLOYEE_INFO WHERE EMPL_ID = T32.EMPL_ID) AS AGREE_NAME
+			    ,T32.EMPL_ID AS AGREE_ID
+			FROM 
+			    DACOM_DIST.TB_CMC_DRF002M T21
+			    LEFT JOIN DACOM_DIST.TB_CMC_DRF001M T32 ON T21.GROUP_UNIQ_NO = T32.GROUP_UNIQ_NO
+			    LEFT JOIN KIUPSMS.PART_INFO PT ON T21.SEND_BRNCD = PT.BO_CODE
+			<where>
+				T21.SCHEDULE_DSTIC = 'W'
+				<if test='userClass != "A"'>
+		    		AND T32.EMPL_ID = #{emplId}
+				</if>
+				AND T21.PRCSS_STUS_DSTIC != 'C'
+	    		AND T32.AGREE_TYPE IN (1, 2, 3)
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchStartDt)">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchEndDt)">
+				 		<if test='searchStartDt != null and searchStartDt != ""'>
+							<if test='searchEndDt != null and searchEndDt != ""'>
+								   AND T21.REG_YMS  BETWEEN #{searchStartDt} || '000000' AND #{searchEndDt} || '235959' 
+							</if>
+						</if>
+					</if>
+				</if>
+			    <if test="draftName != null and draftName !=''">
+		   			AND T21.GROUP_NM LIKE '%' || #{draftName} || '%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(draftStatus)">
+					<if test="draftStatus !='all'">
+					   AND T32.AGREE_STATUS =#{draftStatus}
+					</if>
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(messageType)">
+					<if test="messageType !='all'">
+						<choose>
+							<when test="messageType == 'sms'">
+								AND T21.MSG_DSTIC = 'SM'
+							</when>
+							<when test="messageType == 'lms'">
+								AND T21.MSG_DSTIC = 'LM'
+							</when>
+							<when test="messageType == 'mms'">
+								AND T21.MSG_DSTIC = 'MM'
+							</when>
+						</choose>
+					</if>
+				</if>
+			</where>
+			ORDER BY T21.REG_YMS DESC, T32.AGREE_TYPE
+		) A
+  </sql>
+  
+ 
+<!-- 결재내역 리스트 조회 총 건수 -->
+  <select id="findTotalCount" resultType="java.lang.Integer">
+    SELECT                                                
+    	 COUNT(GROUP_UNIQ_NO) AS CNT                             
+    FROM ( 
+          <include refid="SMSSENDLIST"/> 
+     )
+  </select>
+
+
+<!-- 결재내역 리스트 조회 -->  
+  <select id="findConfirmList" resultType="com.ibk.msg.web.confirmlist.ConfirmList">
+     <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.header"/>
+    </if>
+          <include refid="SMSSENDLIST"/>                 
+    <if test="currentPage !=null and currentPage !='0' and perPage !=null and perPage !='0' ">
+    	<include refid="PaginationMapper.bottom"/>
+    </if>
+  </select>
+  
+  
+  
+  
+  
+<!-- 결재내역 디테일 조회 -->  
+  <select id="findDetail" resultType="com.ibk.msg.web.confirmlist.ConfirmList">
+    SELECT
+  		T21.GROUP_CO_CD AS GROUPCOCD,
+		T21.GROUP_UNIQ_NO  AS GROUPUNIQNO,
+		T21.BATCH_TAGT_UNIQ_NO  AS BATCHTAGTUNIQNO,
+		T21.BZWK_CHNL_CD  AS BZWKCHNLCD,
+		T21.BZWK_IDNFR   AS BZWKIDNFR,
+		T21.TMPT_UNIQ_NO  AS TMPTUNIQNO,
+		T21.GROUP_NM  AS GROUPNM, 
+		T21.MSG_DSTIC  AS MSGDSTIC, 
+		T21.APPROVAL_YN  AS APPROVALYN, 
+		T21.PRCSS_STUS_DSTIC  AS PRCSSSTUSDSTIC,
+		T21.REQUESTS_NUMBER  AS REQUESTSNUMBER, 
+		T21.SEND_PRITY_DSTIC  AS SENDPRITYDSTIC, 
+		T21.PENGAG_YMS  AS PENGAGYMS,
+		T21.EXPIRE_SCHEDULE_YMS  AS EXPIRESCHEDULEYMS, 
+		T21.SEND_START_YMS  AS SENDSTARTYMS, 
+		T21.SEND_EXPIRE_YMS  AS SENDEXPIREYMS, 
+		T21.SEND_PROGRESS_NUMBER  AS SENDPROGRESSNUMBER,
+		T21.SCHEDULE_DSTIC  AS SCHEDULEDSTIC,
+		T21.TEST_YN  AS TESTYN,
+		T21.INST  AS INST,
+		T21.RECV_REFUSAL_YN  AS RECVREFUSALYN,
+		T21.REG_YMS  AS REGYMS,
+		T21.REG_EMP_NO  AS REGEMPNO,
+		T21.SEND_EMPID  AS SENDEMPID,
+		T21.SEND_BRNCD  AS SENDBRNCD,
+		T21.SNDR_TELNO  AS SNDRTELNO,
+		T21.SNDR_NO_ADDRESS  AS SNDRNOADDRESS,
+		T21.RECV_NO_ADDRESS  AS RECVNOADDRESS,
+		T21.FILTER_LIMIT_YN  AS FILTERLIMITYN,
+		T21.TEST_NO  AS TESTNO,
+		T21.RECV_NO_VAR  AS RECVNOVAR,
+		T21_INFO.CENSOR_ID AS CENSORID,
+		T21_INFO.BUDGET_NM AS BUDGETNM,
+		T21_INFO.MODIFY_REASON AS MODIFYREASON,
+		T21_INFO.STOP_REASON AS STOPREASON,
+		T21_INFO.MSG_CTNT AS  MSGCTNT,
+		T21_INFO.UMS_MSG_CTNT AS UMSMSGCTNT
+	FROM  
+		DACOM_DIST.TB_CMC_DRF002M T21
+    LEFT JOIN 
+		DACOM_DIST.TB_CMC_DRF002D T21_INFO
+    ON  
+		T21.GROUP_UNIQ_NO = T21_INFO.GROUP_UNIQ_NO
+    WHERE 
+    	T21.GROUP_UNIQ_NO = #{groupUniqNo}
+  </select>
+  
+<!-- 승인자 조회 -->  
+  <select id="selectAgreeTarget" resultType="com.ibk.msg.web.smsreq.T32Data">
+		SELECT
+		    T32.GROUP_UNIQ_NO,
+		    T32.EMPL_ID,
+		    T32.AGREE_TYPE,
+		    DECODE(T21.PRCSS_STUS_DSTIC,'N','N',T32.AGREE_STATUS) AS AGREE_STATUS,
+		    T32.REQUESTS_YMS,
+		    T32.CONFIRM_YMS,
+		    T32.DRAFTER_NM
+		FROM
+		    DACOM_DIST.TB_CMC_DRF001M T32
+        LEFT JOIN 
+            DACOM_DIST.TB_CMC_DRF002M T21
+        ON 
+            T21.GROUP_UNIQ_NO = T32.GROUP_UNIQ_NO
+  		WHERE
+		    T32.GROUP_UNIQ_NO = #{groupUniqNo}
+   		<if test=" agreeType !=null and agreeType !='' ">
+			AND T32.AGREE_TYPE = #{agreeType}
+		</if>
+		<if test=" emplId !=null and emplId !='' ">
+			AND T32.EMPL_ID = #{emplId}
+		</if>
+  </select>
+
+<!-- 승인자 리스트 조회 -->  
+  <select id="selectAgreeTargetList" resultType="com.ibk.msg.web.user.UserInfo">
+	SELECT
+	    EMPL_ID,
+	    USER_LEVEL,
+	    EMPL_NAME,
+	    BO_CODE,
+	    EMPL_POSITION,
+	    EMPL_IP,
+	    USE_YN,
+	    PASSWD,
+	    REG_DT,
+	    MOD_DT,
+	    MOD_ID,
+	    ADMIN_YN,
+	    EMPL_YN,
+	    REG_ID
+	FROM
+	    DACOM_DIST.TB_CMC_MNG001M
+	WHERE
+	    USER_LEVEL = #{param1}
+  </select>
+
+<!-- 승인자 승인상태 체크 : 0 모두 승인, 그외 승인 X -->
+  	<select id="checkAgreeAccept" resultType="java.lang.Integer">
+		SELECT 
+			COUNT(1) 
+		FROM 
+			DACOM_DIST.TB_CMC_DRF001M 
+		WHERE 
+			GROUP_UNIQ_NO = ${groupUniqNo}
+			AND AGREE_TYPE IN ('1', '2', '3') 
+			AND AGREE_STATUS IN ('I', 'N')
+  	</select>
+
+<!-- 대직자 정보 조회 -->  
+  <select id="selectT54D" resultType="com.ibk.msg.web.confirmlist.T54DData">
+	SELECT
+	    EMN,
+	    STTG_YMD,
+	    FNSH_YMD,
+	    DLLZ_CD_VL,
+	    DLLZ_CD_NM,
+	    VCTN_NDD,
+	    STTG_HMS,
+	    FNSH_HMS,
+	    WRPX_EMN,
+	    HLTM_DCD
+	FROM
+	    DACOM_DIST.TB_CMC_CMIE54D
+	WHERE
+	    EMN = #{param1}
+  </select>
+
+<!-- T32 2차, 3차 승인자 추가 -->
+	<insert id="insertT32Agree">
+		INSERT INTO DACOM_DIST.TB_CMC_DRF001M
+		(
+		    GROUP_UNIQ_NO
+		    ,EMPL_ID
+		    ,AGREE_TYPE
+		    ,AGREE_STATUS
+		    ,REQUESTS_YMS
+		    ,DRAFTER_NM
+		)
+		SELECT
+		    ${groupUniqNo} AS GROUP_UNIQ_NO
+		    ,UI.EMPL_ID AS EMPL_ID
+		    ,UI.USER_LEVEL AS AGREE_TYPE
+		    ,'I' AS AGREE_STATUS
+		    ,TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS') AS REQUESTS_YMS
+		    ,T21.DRAFTER_NM AS DRAFTER_NM
+		FROM
+		    DACOM_DIST.TB_CMC_MNG001M UI,
+		    (SELECT REG_EMP_NO AS DRAFTER_NM FROM DACOM_DIST.TB_CMC_DRF002M WHERE GROUP_UNIQ_NO = ${groupUniqNo}) T21
+		WHERE
+		    USER_LEVEL = #{agreeType}
+	</insert>
+
+<!-- T32 2차, 3차 승인자 추가(대직자처리) -->
+<!--
+	 param1 : groupUniqNo 
+	 param2 : agreeType
+	 param3 : emplIdList
+-->
+	<insert id="insertT32AgreeTarget">
+		INSERT INTO DACOM_DIST.TB_CMC_DRF001M
+		(
+		    GROUP_UNIQ_NO
+		    ,EMPL_ID
+		    ,AGREE_TYPE
+		    ,AGREE_STATUS
+		    ,REQUESTS_YMS
+		    ,DRAFTER_NM
+		)
+		SELECT 
+		    ${param1} AS GROUP_UNIQ_NO
+		    ,EI.EMPL_ID AS EMPL_ID
+		    ,${param2} AS AGREE_TYPE
+		    ,'I' AS AGREE_STATUS
+		    ,TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS') AS REQUESTS_YMS
+		    ,(SELECT REG_EMP_NO AS DRAFTER_NM FROM DACOM_DIST.TB_CMC_DRF002M WHERE GROUP_UNIQ_NO = ${param1}) AS DRAFTER_NM
+		FROM
+		    KIUPSMS.EMPLOYEE_INFO EI
+		WHERE
+		    EI.EMPL_ID IN (${param3})
+	</insert>
+
+
+<!-- T32 승인자 상태 변경 -->
+	<update id="updateT32Accept">
+		UPDATE 
+		    DACOM_DIST.TB_CMC_DRF001M
+		SET
+		    AGREE_STATUS = #{agreeStatus}
+		    ,CONFIRM_YMS = TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+		WHERE
+		    GROUP_UNIQ_NO = ${groupUniqNo}
+	        AND EMPL_ID = #{emplId}
+    		AND AGREE_TYPE = #{agreeType}
+	</update>
+
+<!-- T21 상태 변경 -->
+	<update id="updateT21Agree">
+		UPDATE
+		    DACOM_DIST.TB_CMC_DRF002M
+		SET
+		    PRCSS_STUS_DSTIC = #{prcssStusDstic}
+		WHERE
+		    GROUP_UNIQ_NO = ${groupUniqNo}
+	</update>
+
+<!-- T21_INFO 사유 변경 -->
+	<update id="updateReason_T21_INFO">
+		UPDATE 
+			DACOM_DIST.TB_CMC_DRF002D
+		SET
+			MODIFY_REASON = #{modifyReason}
+		WHERE
+			GROUP_UNIQ_NO = ${groupUniqNo}
+	</update>
+
+<!-- T28 대상자 갯수 조회 -->
+	<select id="countT28TargetList" resultType="java.lang.Integer">
+		SELECT
+		    COUNT(REPLACE_VARIABLE_VAL)
+		FROM
+		    DACOM_DIST.TB_CMC_DRF003D
+		WHERE 
+			BATCH_TAGT_UNIQ_NO = ${groupUniqNo}
+	</select>
+
+<!-- T28 대상자 정보 조회 -->
+	<select id="selectT28TargetList" resultType="java.lang.String">
+   		SELECT      
+            REPLACE_VARIABLE_VAL
+		FROM
+        (   
+            SELECT
+                ROWNUM AS RNUM
+                ,MAX(ROWNUM) OVER() AS ROW_MAX
+                ,REPLACE_VARIABLE_VAL
+                ,TAGT_UNIQ_NO
+            FROM
+                (  
+                    SELECT 
+                        REPLACE_VARIABLE_VAL
+                        ,TAGT_UNIQ_NO
+                    FROM
+                        DACOM_DIST.TB_CMC_DRF003D
+                    WHERE 
+                        BATCH_TAGT_UNIQ_NO = ${groupUniqNo}
+                    ORDER BY
+                        TAGT_UNIQ_NO
+                )
+        )
+		WHERE 
+            RNUM BETWEEN 1 AND 10
+            OR RNUM BETWEEN (ROW_MAX - 9) AND (ROW_MAX)
+        ORDER BY TAGT_UNIQ_NO
+	</select>
+	
+<!-- T28 대상자 정보 조회 -->
+	<select id="selectTotalCntConfirm" resultType="java.lang.Integer">
+		SELECT
+		    COUNT(*)
+		FROM
+		    DACOM_DIST.TB_CMC_DRF001M T32
+		LEFT JOIN
+		    DACOM_DIST.TB_CMC_DRF002M T21
+		ON
+		    T32.GROUP_UNIQ_NO = T21.GROUP_UNIQ_NO
+		WHERE
+		    T21.PRCSS_STUS_DSTIC = 'A'
+		    AND T32.AGREE_STATUS = 'I'
+		    AND T32.AGREE_TYPE NOT IN ('1', '4')
+		    AND T32.EMPL_ID = #{param1}
+	</select>
+	
+	
+</mapper>

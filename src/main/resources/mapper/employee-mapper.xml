@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.msg.web.auth.EmployeeDao">
+    <select id="findDetail" resultType="com.ibk.msg.web.auth.EmployeeInfo">
+        SELECT
+        EMPL_ID
+        ,BO_CODE
+        ,EMPL_BSNO_7
+        ,EMPL_NAME
+        ,EMPL_HP_NO
+        ,EMPL_CUT
+        ,EMPL_CLASS
+        ,EMPL_POSITION
+        ,EMAL_ADR
+        ,RSPT_CD
+        ,ORGZ_ATRB_CD
+        FROM KIUPSMS.EMPLOYEE_INFO
+        WHERE EMPL_ID = #{EMPL_ID}
+    </select>
+    
+    <select id="findDetailEmplA" resultType="com.ibk.msg.web.auth.EmployeeInfo">
+        SELECT
+        EMPL_ID_OTHER AS EMPL_ID
+        ,BO_CODE
+        ,EMPL_BSNO_7
+        ,EMPL_NAME
+        ,EMPL_HP_NO
+        ,EMPL_CUT
+        ,EMPL_CLASS
+        ,EMPL_POSITION
+        ,EMAL_ADR
+        ,RSPT_CD
+        ,ORGZ_ATRB_CD
+        FROM KIUPSMS.EMPLOYEE_INFO
+        WHERE EMPL_ID_OTHER = #{EMPL_ID}
+    </select>
+
+    <sql id="EMPLOYEE">
+        SELECT
+	   		EI.EMPL_NAME
+	        ,EI.EMPL_POSITION
+	        ,EI.BO_CODE
+	        ,EI.EMPL_ID
+	        ,PI.PART_NAME
+        FROM 
+        	KIUPSMS.EMPLOYEE_INFO EI
+        LEFT JOIN
+            KIUPSMS.PART_INFO PI
+        ON 
+            EI.BO_CODE = PI.BO_CODE
+        <where>
+	        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+	            <choose>
+	                <when test="searchWordType eq 'empName' ">
+	                    AND EI.EMPL_NAME like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'emplId' ">
+	                    AND EI.EMPL_ID like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'BoCode' ">
+	                    AND EI.BO_CODE like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'partName' ">
+	                    AND PI.PART_NAME like '%'|| #{searchWord} || '%'
+	                </when>
+	            </choose>
+	        </if>
+        </where>
+        ORDER BY EI.EMPL_POSITION DESC
+    </sql>
+    
+    <sql id="BOCODE">
+        SELECT
+	       BO_CODE
+	      ,PART_NAME
+        FROM 
+        	KIUPSMS.PART_INFO
+        <where>
+	        <if test="@org.apache.commons.lang3.StringUtils@isNotEmpty(searchWordType)">
+	            <choose>
+	                <when test="searchWordType eq 'bo_code' ">
+	                    AND BO_CODE like '%'|| #{searchWord} || '%'
+	                </when>
+	                <when test="searchWordType eq 'part_name' ">
+	                    AND PART_NAME like '%'|| #{searchWord} || '%'
+	                </when>
+	            </choose>
+	        </if>
+        </where>
+        ORDER BY PART_NAME DESC
+    </sql>
+
+    <select id="findTotalCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM (
+        <include refid="EMPLOYEE"/>
+        )
+    </select>
+    
+   	<select id="findBocodeTotalCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM (
+        <include refid="BOCODE"/>
+        )
+    </select>
+    
+    <select id="findEmployee" resultType="com.ibk.msg.web.auth.EmployeeInfo">
+        <include refid="PaginationMapper.header"/>
+        <include refid="EMPLOYEE"/>
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+    <select id="findBocode" resultType="com.ibk.msg.web.auth.EmployeeInfo">
+        <include refid="PaginationMapper.header"/>
+        <include refid="BOCODE"/>
+        <include refid="PaginationMapper.bottom"/>
+    </select>
+
+    <select id="checkEmplHp" resultType="java.lang.Integer">
+        SELECT COUNT(*) AS CNT
+        FROM KIUPSMS.EMPLOYEE_INFO
+        WHERE EMPL_HP_NO = #{emplHpNo}
+    </select>
+
+
+	
+	<select id="findUserInfo" resultType="com.ibk.msg.web.user.UserInfo">
+		SELECT
+		    EMPL_ID
+		    ,USER_LEVEL
+		    ,EMPL_NAME
+		    ,BO_CODE
+		    ,EMPL_POSITION
+		    ,EMPL_IP
+		    ,USE_YN
+		    ,PASSWD
+		    ,REG_DT
+		    ,REG_ID
+		    ,MOD_DT
+		    ,MOD_ID
+		    ,ADMIN_YN
+		    ,EMPL_LEVEL
+		FROM
+		    DACOM_DIST.TB_CMC_MNG001M
+		WHERE
+		    EMPL_ID = #{EMPL_ID}
+	</select>
+	
+	
+	<select id="findUserMappingLoginId" resultType="com.ibk.msg.web.auth.UserMappingInfo">
+		SELECT
+			BO_CODE
+			,EMPL_ID
+			,EMPL_IP
+			,EMPL_LEVEL
+			,EMPL_NAME
+			,LOGIN_ID
+			,USE_IP_CHECK
+			,USE_YN
+		FROM
+		    DACOM_DIST.USER_MAPPING
+		<where>
+			<if test="useYn != null and useYn != '' ">
+		    	AND USE_YN = #{useYn}           
+		    </if>
+		    AND LOGIN_ID = #{loginId}
+		    AND ROWNUM = 1
+		</where>
+			
+			
+	</select>
+	
+	<select id="findUserMappingconnectIP" resultType="com.ibk.msg.web.auth.UserMappingInfo">
+		SELECT
+			BO_CODE
+			,EMPL_ID
+			,EMPL_IP
+			,EMPL_LEVEL
+			,EMPL_NAME
+			,LOGIN_ID
+			,USE_IP_CHECK
+			,USE_YN
+		FROM
+		    DACOM_DIST.USER_MAPPING
+		<where>
+			<if test="useYn != null and useYn != '' ">
+		    	AND USE_YN = #{useYn}           
+		    </if>
+			<if test="useIpCheck != null and useIpCheck != '' ">
+		    	AND USE_IP_CHECK = #{useIpCheck}
+		    </if>
+		    AND LOGIN_ID IS NULL
+		    AND EMPL_IP = #{emplIp}
+		    AND ROWNUM = 1
+		</where>
+	</select>
+	
+	<select id="findLoginAuthInfo" resultType="java.util.HashMap">
+		SELECT
+			BO_CODE
+			,EMPL_ID
+			,EMPL_IP
+			,EMPL_LEVEL
+			,EMPL_NAME
+			,GROUP_CO_CD
+			,LOGIN_DT
+			,LOGIN_FAIL_CN
+			,LOGIN_ID
+			,MOBILE
+			,MOD_DT
+			,MOD_ID
+			,PASSWD
+			,PW_CN_DT
+			,REG_DT
+			,REG_ID
+			,USE_YN
+			,USE_YN_CN_DT
+		FROM
+		    DACOM_DIST.TB_CMC_MNG006M
+		WHERE
+		    EMPL_ID = #{EMPL_ID}
+	</select>
+	
+	<select id="loginCheck" resultType="hashmap">
+		SELECT                                                           
+		    TC6M.GROUP_CO_CD
+		    , TC6M.EMPL_ID
+		    , TC6M.EMPL_IP
+		    , TC6M.EMPL_NAME
+		    , TC6M.EMPL_LEVEL
+		    , TC6M.BO_CODE
+		    , PA.PART_NAME
+		    , TC6M.LOGIN_ID
+		    , TC6M.PASSWD
+		    , TC6M.MOBILE
+		    , TC6M.USE_YN
+		    , TC6M.USE_YN_CN_DT
+		    , TC6M.REG_DT
+		    , TC6M.REG_ID
+		    , TC6M.LOGIN_DT
+		    , TC6M.LOGIN_FAIL_CN
+		    , TC6M.PW_CN_DT
+		    , TC6M.MOD_DT
+		    , TC6M.MOD_ID
+		FROM                                                             
+		    DACOM_DIST.TB_CMC_MNG006M TC6M, KIUPSMS.PART_INFO PA
+		WHERE
+			TC6M.BO_CODE = PA.BO_CODE(+)
+		AND
+		    TC6M.LOGIN_ID = #{param1}
+	</select>
+	
+	<update id="updateLoginDt">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG006M 
+        SET	
+        	LOGIN_DT = to_char(sysdate, 'YYYYMMDDHH24MISS')
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+    
+	<update id="updateLoginFailCn">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG006M 
+        SET	
+        	LOGIN_FAIL_CN=LOGIN_FAIL_CN+1
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>	
+    
+    <select id="motpCheck" resultType="hashmap">
+		SELECT                                                           
+		    *  
+		FROM                                                             
+		    DACOM_DIST.TB_CMC_MNG007M                                               
+		WHERE                                                            
+		    LOGIN_ID = #{param1}                                     
+	</select>
+	<update id="updateMotpDt">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG007M 
+        SET	
+        	LOGIN_DT = to_char(sysdate, 'YYYYMMDDHH24MISS')
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>
+	<update id="updateMotpFailCn">
+        UPDATE 
+        	DACOM_DIST.TB_CMC_MNG007M 
+        SET	
+        	LOGIN_FAIL_CN=LOGIN_FAIL_CN+1
+        WHERE 
+        	LOGIN_ID = #{login_id}
+    </update>	
+	
+</mapper>
